@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="UTF-8" />
+		<title>WebTail log show</title>
+		<script src="jquery-2.1.4.min.js"></script>
+		<script>
+      var state = {
+          connected: false
+      };
+
+      var settings = {
+          uri: location.host + '/tail'
+      };
+
+      var ws;
+      var Every = 500;
+      var timeInMs = Date.now();
+      var Logs;
+
+      function dateFormatted(date) {
+          var month = date.getMonth() + 1;
+          var day = date.getDate();
+          var hour = date.getHours();
+          var min = date.getMinutes();
+          var sec = date.getSeconds();
+
+          month = (month < 10 ? "0" : "") + month;
+          day = (day < 10 ? "0" : "") + day;
+          hour = (hour < 10 ? "0" : "") + hour;
+          min = (min < 10 ? "0" : "") + min;
+          sec = (sec < 10 ? "0" : "") + sec;
+
+          var str = day + "." + month + "." + date.getFullYear() + " " +  hour + ":" + min + ":" + sec;
+          return str;
+      }
+      function show(files) {
+        Logs = files;
+
+        var row = $('table.table tbody tr:first');
+        var table = $('<table></table>').addClass('foo');
+        var sorted = Object.keys(files).sort().forEach( function(s) {
+          var f = files[s];
+          var p = $('<tr>').attr('rel',s).html(row.html());
+          row.after(p);
+          p.find('[rel="size"]')[0].innerHTML = f.size;
+          p.find('[rel="mtime"]')[0].innerHTML = dateFormatted(f.mtime);
+          p.find('[rel="link"]').attr("href", '#' + s).text(s).click(function(){
+            tail(s);
+          });
+          p.removeClass('hide');
+        } );
+        $('table.table tbody tr:first').remove(); // delete first row
+      }
+
+      function tail(file) {
+          $('#copied').text('');
+          $('#src').find('[rel="title"]')[0].innerHTML = file;
+          $('#src').clone().attr("id","msg-"+file).appendTo('#copied').show();
+          var m = JSON.stringify({channel: file})
+          console.debug("send: "+m);
+          ws.send(m);
+      }
+
+      function connect(settings) {
+        try {
+          var host = 'ws://' + settings.uri;
+          ws = new WebSocket(host);
+
+          ws.onopen = function() {
+            state.connected = true;
+            if (Logs == undefined) {
+              if (location.hash == "") {
+                var m = '{}';
+                console.debug("send: "+m);
+                ws.send(m);
+              } else {
+                tail(location.hash.replace(/^#/,""));
+              }
+            }
+          }
+
+          ws.onclose = function() {
+            state.connected = false;
+            setInterval(function() {
+                connect(settings);
+            }, 1000);
+          }
+
+          ws.onerror = function(e) {
+            $('#copied').text(e.name);
+          }
+          ws.onmessage = function(e) {
+            var m = JSON.parse(e.data,JSON.dateParser);
+            console.debug("got "+e.data);
+
+            if (m.channel == undefined) {
+              show(m.message);
+            } else {
+               var $area = $('#msg-'+m.channel+" .data");
+              $area.append(m.message+"\n");
+              if (Date.now() - timeInMs > Every) {
+                $area.scrollTop($area[0].scrollHeight - $area.height());
+                timeInMs = Date.now();
+              }
+            }
+          };
+
+        } catch(e){
+            console.log(e);
+        }
+      }
+
+      $(function() {
+        connect(settings);
+      });
+      if (window.JSON && !window.JSON.dateParser) {
+          var reISO = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2}(?:\.\d*))(?:Z|(\+|-)([\d|:]*))?$/;
+          var reMsAjax = /^\/Date\((d|-|.*)\)[\/|\\]$/;
+
+          JSON.dateParser = function (key, value) {
+              if (typeof value === 'string') {
+                  var a = reISO.exec(value);
+                  if (a)
+                      return new Date(value);
+                  a = reMsAjax.exec(value);
+                  if (a) {
+                      var b = a[1].split(/[-+,.]/);
+                      return new Date(b[0] ? +b[0] : 0 - +b[1]);
+                  }
+              }
+              return value;
+          };
+
+      }
+		</script>
+	</head>
+	<body>
+    <div id="copied" style="width:95%;height:90%;">
+    <h4>WebTail Logs</h4>
+      <table class="table">
+        <tbody>
+          <tr class='hide'>
+          <td><a rel="link" href="#"></a></td>
+          <td rel="mtime"></td>
+          <td rel="size" align="right"></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div id="src" style="width:95%;height:90%; display: none;">
+    <h4><a href="/">WebTail</a> / <span rel="title"></span></h4>
+     <textarea style="width: 95vw; height: 90vh;" class="data"></textarea>
+    </div>
+	</body>
+</html>
+
