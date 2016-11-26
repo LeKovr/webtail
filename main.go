@@ -26,7 +26,7 @@ type Flags struct {
 	Addr     string `long:"http_addr"   default:"localhost:8080" description:"Http listen address"`
 	LogLevel string `long:"log_level"   default:"info"           description:"Log level [warn|info|debug]"`
 	Lines    string `long:"lines"       default:"20"             description:"Show N lines at start (see tail -n)"`
-	Root     string `long:"root"        description:"Root directory for log files"`
+	Root     string `long:"root"        default:"log/"            description:"Root directory for log files"`
 	Version  bool   `long:"version"     description:"Show version and exit"`
 }
 
@@ -66,10 +66,11 @@ var (
 
 func loadLogs() (files FileStore, err error) {
 	files = FileStore{}
+	dir := strings.TrimSuffix(cfg.Root, "/")
 	err = filepath.Walk(cfg.Root, func(path string, f os.FileInfo, err error) error {
 		if !f.IsDir() {
-			p := strings.TrimPrefix(path, cfg.Root+"/")
-			lg.Println("debug: found logfile %s", p)
+			p := strings.TrimPrefix(path, dir+"/")
+			lg.Printf("debug: found logfile %s", p)
 			files[p] = &FileAttr{MTime: f.ModTime(), Size: f.Size()}
 		}
 		return nil
