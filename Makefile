@@ -50,6 +50,7 @@ ver: build
 
 ## generate bindata
 # See https://github.com/elazarl/go-bindata-assetfs
+# for disabling lint warnings use "//golint:ignore"
 bindata:
 	go-bindata-assetfs html/
 
