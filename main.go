@@ -117,7 +117,7 @@ func tailHandler(ws *websocket.Conn) {
 			}
 			break
 		}
-		t, err := tail.TailFile(path.Join(cfg.Root, m.Channel), cfg.Lines, 100)
+		t, err := tail.TailFile(path.Join(cfg.Root, m.Channel), cfg.Lines, 1024)
 		if err != nil {
 			lg.Println("info: tail:", err)
 			break
