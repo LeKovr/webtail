@@ -3,7 +3,7 @@ package main
 // App version variables
 
 // Version set in source code
-const Version = "0.3"
+const Version = "0.4"
 
 // Build time filled by make on program build
 var Build string
