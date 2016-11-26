@@ -88,6 +88,10 @@ for a in "$(ALLARCH)" ; do \
   zip "$(DIRDIST)/$$P.zip" "$$P1" README.md ; \
 done
 
+test-log:
+	[ -d log ] || mkdir log
+	while true ; do echo -n "." ; date >> log/xxx ; sleep 2 ; done
+
 ## clean generated files
 clean:
 	@echo "*** $@ ***"
