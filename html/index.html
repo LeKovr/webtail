@@ -15,6 +15,7 @@
       };
 
       // Format datetime
+      // code from http://stackoverflow.com/a/32062237
       function dateFormatted(date) {
         var month = date.getMonth() + 1;
         var day = date.getDate();
@@ -31,35 +32,41 @@
         var str = day + "." + month + "." + date.getFullYear() + " " +  hour + ":" + min + ":" + sec;
         return str;
       }
+
+      // Format file size
+      // code from http://stackoverflow.com/a/20732091
       function sizeFormatted(size) {
         if (!size) return '0 B';
         var i = Math.floor( Math.log(size) / Math.log(1024) );
         return ( size / Math.pow(1024, i) ).toFixed(2) * 1 + ' ' + ['B', 'kB', 'MB', 'GB', 'TB'][i];
       }
+
       // Show table with logfiles list
       function show(files) {
         WebTail.logs = files;
 
         var row = $('table.table tbody tr:first');
         var splitter = /^(.+)\/([^/]+)$/;
-        var prevDir = '/';
+        var prevDir = '';
 
         var sorted = Object.keys(files).sort().forEach( function(s) {
           var f = files[s];
           var p = row.clone();
           var path = '&nbsp;';
           row.before(p);
-          a=splitter.exec(s); // split file dir and name
-          if (prevDir != a[1]) {
-            path = prevDir = a[1];
+          var a = splitter.exec(s); // split file dir and name
+          if (a == undefined) {
+            name = s;
+          } else {
+            name = a[2];
+            if (prevDir != a[1]) {
+              path = prevDir = a[1];
+            }
           }
-
           p.find('[rel="path"]')[0].innerHTML = path;
           p.find('[rel="size"]')[0].innerHTML = sizeFormatted(f.size);
           p.find('[rel="mtime"]')[0].innerHTML = dateFormatted(f.mtime);
-          p.find('[rel="link"]').attr("href", '#' + s).text(a[2]).click(function(){
-            tail(s);
-          });
+          p.find('[rel="link"]').attr("href", '#' + s).text(name);
           p.removeClass('hide');
         } );
       }
@@ -74,6 +81,21 @@
           WebTail.ws.send(m);
       }
 
+      function showPage() {
+          if (location.hash == "") {
+
+            if (WebTail.logs != undefined) {
+              location.reload(true); // TODO: reopen socket
+            }
+
+            var m = '{}';
+            console.debug("send: "+m);
+            WebTail.ws.send(m);
+          } else {
+            tail(location.hash.replace(/^#/,""));
+          }
+      }
+
       // Setup websocket
       function connect() {
         try {
@@ -82,13 +104,7 @@
 
           WebTail.ws.onopen = function() {
             if (WebTail.logs == undefined) {
-              if (location.hash == "") {
-                var m = '{}';
-                console.debug("send: "+m);
-                WebTail.ws.send(m);
-              } else {
-                tail(location.hash.replace(/^#/,""));
-              }
+              showPage();
             }
           }
 
@@ -99,6 +115,7 @@
           WebTail.ws.onerror = function(e) {
             $('#log').text(e.name);
           }
+
           WebTail.ws.onmessage = function(e) {
             var m = JSON.parse(e.data,JSON.dateParser);
             console.debug("got "+e.data);
@@ -125,8 +142,11 @@
       $(function() {
         connect();
       });
-
+      window.onhashchange = function() {
+        showPage();
+      }
       // JSON datetime parser
+      // code from https://weblog.west-wind.com/posts/2014/jan/06/javascript-json-date-parsing-and-real-dates
       if (window.JSON && !window.JSON.dateParser) {
         var reISO = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2}(\.\d*)?)(?:Z|(\+|-)([\d|:]*))?$/;
         var reMsAjax = /^\/Date\((d|-|.*)\)[\/|\\]$/;
@@ -148,16 +168,16 @@
       }
 		</script>
     <style>
-    tr:nth-child(even) {background-color: #f2f2f2}
-    tr:hover {background-color: #f5f5f5}
-    th, td {
-      border-bottom: 1px solid #ddd;
-      padding: 10px;
-    }
-    #bottom {
-      text-align:right;
-      font-size: 9pt;
-    }
+      tr:nth-child(even) {background-color: #f2f2f2}
+      tr:hover {background-color: #f5f5f5}
+      th, td {
+        border-bottom: 1px solid #ddd;
+        padding: 10px;
+      }
+      #bottom {
+        text-align:right;
+        font-size: 9pt;
+      }
     </style>
 	</head>
 	<body>
