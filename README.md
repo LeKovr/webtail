@@ -12,12 +12,13 @@ webtail
 
 [webtail](https://github.com/LeKovr/webtail) - Tail logfile via websocket
 
-This service loads list of logfiles fron directory tree & continuously shows result of chosen file tail via websocket.
+This service loads list of logfiles from directory tree & continuously shows result of chosen file tail via websocket.
+
 Install
 -------
 
 ```
-go get github.com/LeKovr/webTail
+go get github.com/LeKovr/webtail
 ```
 
 ### Download

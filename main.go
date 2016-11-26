@@ -24,8 +24,7 @@ import (
 // Flags defines local application flags
 type Flags struct {
 	Addr     string `long:"http_addr"   default:"localhost:8080" description:"Http listen address"`
-	Static   string `long:"static"      default:"html"           description:"Static files dir"`
-	LogLevel string `long:"log_level"   default:"warn"           description:"Log level [warn|info|debug]"`
+	LogLevel string `long:"log_level"   default:"info"           description:"Log level [warn|info|debug]"`
 	Lines    string `long:"lines"       default:"20"             description:"Show N lines at start (see tail -n)"`
 	Root     string `long:"root"        description:"Root directory for log files"`
 	Version  bool   `long:"version"     description:"Show version and exit"`
@@ -49,7 +48,7 @@ type FileStore map[string]*FileAttr
 
 type message struct {
 	Channel string `json:"channel"`
-	Message string `json:"message,omitempty"`
+	Message string `json:"message"`
 	Error   string `json:"error,omitempty"`
 }
 
@@ -70,6 +69,7 @@ func loadLogs() (files FileStore, err error) {
 	err = filepath.Walk(cfg.Root, func(path string, f os.FileInfo, err error) error {
 		if !f.IsDir() {
 			p := strings.TrimPrefix(path, cfg.Root+"/")
+			lg.Println("debug: found logfile %s", p)
 			files[p] = &FileAttr{MTime: f.ModTime(), Size: f.Size()}
 		}
 		return nil
@@ -124,6 +124,7 @@ func tailHandler(ws *websocket.Conn) {
 
 		for line := range t.Lines {
 			// send a response
+			lg.Printf("debug: Sending line: %s", line)
 			m2 := message{Channel: m.Channel, Message: line}
 			if err = websocket.JSON.Send(ws, m2); err != nil {
 				lg.Println("info: Can't send:", err)
@@ -140,12 +141,19 @@ func main() {
 	lg.Printf("info: %s v %s. WebTail, tail logfiles via web", path.Base(os.Args[0]), Version)
 	lg.Print("info: Copyright (C) 2016, Alexey Kovrizhkin <ak@elfire.ru>")
 
+	_, err := os.Stat(cfg.Root)
+	panicIfError(err, "Logfile root dir")
+
+	logs, err := loadLogs()
+	panicIfError(err, "Load logfile list")
+	lg.Printf("info: Logfiles root %s contains %d item(s)", cfg.Root, len(logs))
+
 	http.Handle("/tail", websocket.Handler(tailHandler))
-	http.Handle("/", http.FileServer(http.Dir(cfg.Static)))
+	http.Handle("/", http.FileServer(assetFS()))
 
 	lg.Printf("info: Listen at http://%s", cfg.Addr)
-	err := http.ListenAndServe(cfg.Addr, nil)
-	panicIfError(err)
+	err = http.ListenAndServe(cfg.Addr, nil)
+	panicIfError(err, "Listen")
 }
 
 // -----------------------------------------------------------------------------
@@ -168,7 +176,7 @@ func setUp(cfg *Config) (err error) {
 	runtime.GOMAXPROCS(runtime.NumCPU())
 
 	lvl, err := colog.ParseLevel(cfg.LogLevel)
-	panicIfError(err)
+	panicIfError(err, "Parse loglevel")
 
 	cl := colog.NewCoLog(os.Stderr, "", log.Lshortfile|log.Ldate|log.Ltime)
 	cl.SetMinLevel(lvl)
@@ -180,8 +188,9 @@ func setUp(cfg *Config) (err error) {
 
 // -----------------------------------------------------------------------------
 
-func panicIfError(err error) {
+func panicIfError(err error, msg string) {
 	if err != nil {
-		panic(err)
+		lg.Printf("error: %s error: %s", msg, err.Error())
+		os.Exit(1)
 	}
 }

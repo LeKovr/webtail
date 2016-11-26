@@ -48,8 +48,13 @@ help: build
 ver: build
 	./@$(PRGPATH) --version && echo ""
 
+## generate bindata
+# See https://github.com/elazarl/go-bindata-assetfs
+bindata:
+	go-bindata-assetfs html/
+
 ## build app
-build: lint vet $(PRGPATH)
+build: bindata lint vet $(PRGPATH)
 
 ## build app for default arch
 $(PRGPATH): $(SOURCES)
