@@ -3,204 +3,38 @@
 	<head>
 		<meta charset="UTF-8" />
 		<title>WebTail log show</title>
-		<script src="jquery-2.1.4.min.js"></script>
-		<script>
-
-      var WebTail = {
-          uri: location.host + '/tail',
-          every: 500,
-          timeInMs: Date.now()
-          // ws
-          // logs
-      };
-
-      // Format datetime
-      // code from http://stackoverflow.com/a/32062237
-      function dateFormatted(date) {
-        var month = date.getMonth() + 1;
-        var day = date.getDate();
-        var hour = date.getHours();
-        var min = date.getMinutes();
-        var sec = date.getSeconds();
-
-        month = (month < 10 ? "0" : "") + month;
-        day = (day < 10 ? "0" : "") + day;
-        hour = (hour < 10 ? "0" : "") + hour;
-        min = (min < 10 ? "0" : "") + min;
-        sec = (sec < 10 ? "0" : "") + sec;
-
-        var str = day + "." + month + "." + date.getFullYear() + " " +  hour + ":" + min + ":" + sec;
-        return str;
-      }
-
-      // Format file size
-      // code from http://stackoverflow.com/a/20732091
-      function sizeFormatted(size) {
-        if (!size) return '0 B';
-        var i = Math.floor( Math.log(size) / Math.log(1024) );
-        return ( size / Math.pow(1024, i) ).toFixed(2) * 1 + ' ' + ['B', 'kB', 'MB', 'GB', 'TB'][i];
-      }
-
-      // Show table with logfiles list
-      function show(files) {
-        WebTail.logs = files;
-
-        var row = $('table.table tbody tr:first');
-        var splitter = /^(.+)\/([^/]+)$/;
-        var prevDir = '';
-
-        var sorted = Object.keys(files).sort().forEach( function(s) {
-          var f = files[s];
-          var p = row.clone();
-          var path = '&nbsp;';
-          row.before(p);
-          var a = splitter.exec(s); // split file dir and name
-          if (a == undefined) {
-            name = s;
-          } else {
-            name = a[2];
-            if (prevDir != a[1]) {
-              path = prevDir = a[1];
-            }
-          }
-          p.find('[rel="path"]')[0].innerHTML = path;
-          p.find('[rel="size"]')[0].innerHTML = sizeFormatted(f.size);
-          p.find('[rel="mtime"]')[0].innerHTML = dateFormatted(f.mtime);
-          p.find('[rel="link"]').attr("href", '#' + s).text(name);
-          p.removeClass('hide');
-        } );
-      }
-
-      // Start tail
-      function tail(file) {
-          $('#copied').text('');
-          $('#src').find('[rel="title"]')[0].innerHTML = file;
-          $('#src').clone().attr("id","tail-data").appendTo('#copied').show();
-          var m = JSON.stringify({channel: file})
-          console.debug("send: "+m);
-          WebTail.ws.send(m);
-      }
-
-      function showPage() {
-          if (location.hash == "") {
-
-            if (WebTail.logs != undefined) {
-              location.reload(true); // TODO: reopen socket
-            }
-
-            var m = '{}';
-            console.debug("send: "+m);
-            WebTail.ws.send(m);
-          } else {
-            tail(location.hash.replace(/^#/,""));
-          }
-      }
-
-      // Setup websocket
-      function connect() {
-        try {
-          var host = 'ws://' + WebTail.uri;
-          WebTail.ws = new WebSocket(host);
-
-          WebTail.ws.onopen = function() {
-            if (WebTail.logs == undefined) {
-              showPage();
-            }
-          }
-
-          WebTail.ws.onclose = function() {
-            $("#log").text('Connection closed');
-          }
-
-          WebTail.ws.onerror = function(e) {
-            $('#log').text(e.name);
-          }
-
-          WebTail.ws.onmessage = function(e) {
-            var m = JSON.parse(e.data,JSON.dateParser);
-            console.debug("got "+e.data);
-            $("#log").text('');
-
-            if (m.channel == undefined) {
-              show(m.message);
-            } else {
-              var $area = $('#tail-data .data');
-              $area.append(m.message+"\n");
-              if (Date.now() - WebTail.timeInMs > WebTail.every) {
-                $area.scrollTop($area[0].scrollHeight - $area.height());
-                WebTail.timeInMs = Date.now();
-              }
-            }
-          };
-
-        } catch(e){
-            console.log(e);
-        }
-      }
-
-      // Open websocket on start
-      $(function() {
-        connect();
-      });
-      window.onhashchange = function() {
-        showPage();
-      }
-      // JSON datetime parser
-      // code from https://weblog.west-wind.com/posts/2014/jan/06/javascript-json-date-parsing-and-real-dates
-      if (window.JSON && !window.JSON.dateParser) {
-        var reISO = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2}(\.\d*)?)(?:Z|(\+|-)([\d|:]*))?$/;
-        var reMsAjax = /^\/Date\((d|-|.*)\)[\/|\\]$/;
-
-        JSON.dateParser = function (key, value) {
-          if (typeof value === 'string') {
-            var a = reISO.exec(value);
-            if (a)
-              return new Date(value);
-            a = reMsAjax.exec(value);
-            if (a) {
-              var b = a[1].split(/[-+,.]/);
-              return new Date(b[0] ? +b[0] : 0 - +b[1]);
-            }
-          }
-          return value;
-        };
-
-      }
-		</script>
-    <style>
-      tr:nth-child(even) {background-color: #f2f2f2}
-      tr:hover {background-color: #f5f5f5}
-      th, td {
-        border-bottom: 1px solid #ddd;
-        padding: 10px;
-      }
-      #bottom {
-        text-align:right;
-        font-size: 9pt;
-      }
-    </style>
+    <script src="jquery-2.1.4.min.js"></script>
+    <script src="webtail.js"></script>
+    <link rel="stylesheet" type="text/css" href="webtail.css">
 	</head>
 	<body>
-    <div id="copied" style="width:95%;height:90%;">
+    <div id="copied" class="content">
     <h3>WebTail Logs</h3>
       <table class="table">
+        <thead>
+          <tr class="hide">
+            <th>Path</td>
+            <th>File</th>
+            <th>Modified</th>
+            <th align="right">Size</th>
+          </tr>
+        </thead>
         <tbody>
-          <tr class='hide'>
-          <td rel="path"></td>
-          <td><a rel="link" href="#"></a></td>
-          <td rel="mtime"></td>
-          <td rel="size" align="right"></td>
+          <tr class="hide">
+            <td rel="path"></td>
+            <td><a rel="link" href="#"></a></td>
+            <td rel="mtime"></td>
+            <td rel="size" align="right"></td>
           </tr>
         </tbody>
       </table>
     </div>
-    <div id="src" style="width:95%;height:90%; display: none;">
+    <div id="src" class="hide content">
     <h4><a href="/">WebTail</a> / <span rel="title"></span></h4>
-     <textarea style="width: 95vw; height: 90vh;" class="data"></textarea>
+    <textarea class="data"></textarea>
     </div>
     <div id="log"></div>
     <hr>
     <div id="bottom">Powered by <a href='https://github.com/LeKovr/webtail'>WebTail</a></div>
 	</body>
 </html>
-
