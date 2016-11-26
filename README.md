@@ -23,7 +23,7 @@ go get github.com/LeKovr/webtail
 
 ### Download
 
-See [Latest release](https://github.com/LeKovr/webtail/latest)
+See [Latest release](https://github.com/LeKovr/webtail/releases/latest)
 
 Acknowledgements
 ----------------
