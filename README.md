@@ -30,6 +30,10 @@ Acknowledgements
 * [Aman Mangal](https://github.com/mangalaman93) for his [golang tail lib](https://github.com/mangalaman93/tail)
 * [stackoverflow](http://stackoverflow.com) authors & posters
 
+### TODO
+
+* reopen tail after extra long lone
+
 License
 -------
 
