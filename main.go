@@ -25,8 +25,9 @@ import (
 type Flags struct {
 	Addr     string `long:"http_addr"   default:"localhost:8080" description:"Http listen address"`
 	LogLevel string `long:"log_level"   default:"info"           description:"Log level [warn|info|debug]"`
+	Root     string `long:"root"        default:"log/"           description:"Root directory for log files"`
 	Lines    string `long:"lines"       default:"20"             description:"Show N lines at start (see tail -n)"`
-	Root     string `long:"root"        default:"log/"            description:"Root directory for log files"`
+	Length   int    `long:"length"      default:"10240"          description:"Single line buffer size"`
 	Version  bool   `long:"version"     description:"Show version and exit"`
 }
 
@@ -117,7 +118,7 @@ func tailHandler(ws *websocket.Conn) {
 			}
 			break
 		}
-		t, err := tail.TailFile(path.Join(cfg.Root, m.Channel), cfg.Lines, 1024)
+		t, err := tail.TailFile(path.Join(cfg.Root, m.Channel), cfg.Lines, cfg.Length)
 		if err != nil {
 			lg.Println("info: tail:", err)
 			break
