@@ -1,19 +1,23 @@
 <!DOCTYPE html>
 <html>
-	<head>
-		<meta charset="UTF-8" />
-		<title>WebTail log show</title>
-    <script src="jquery-2.1.4.min.js"></script>
-    <script src="webtail.js"></script>
-    <link rel="stylesheet" type="text/css" href="webtail.css">
+    <head>
+	  <meta charset="UTF-8" />
+	  <title>WebTail log show</title>
+      <script src="jquery-2.1.4.min.js"></script>
+      <script src="webtail.js"></script>
+      <link rel="stylesheet" type="text/css" href="webtail.css">
 	</head>
 	<body>
-    <div id="copied" class="content">
-    <h3>WebTail Logs</h3>
+    <div id="index" class="content">
+      <div class="top">
+        <div class="right"><label for="logtype">nginx</label><input type="checkbox" id="logtype" ></div>
+        <div class="left"><h4>WebTail Log Index</h4></div>
+      </div>
+      <div class="data">
       <table class="table">
         <thead>
           <tr class="hide">
-            <th>Path</td>
+            <th>Path</th>
             <th>File</th>
             <th>Modified</th>
             <th align="right">Size</th>
@@ -22,19 +26,23 @@
         <tbody>
           <tr class="hide">
             <td rel="path"></td>
-            <td><a rel="link" href="#"></a></td>
+            <td><a rel="link"></a></td>
             <td rel="mtime"></td>
             <td rel="size" align="right"></td>
           </tr>
         </tbody>
       </table>
+      </div>
     </div>
     <div id="src" class="hide content">
-    <h4><a href="/">WebTail</a> / <span rel="title"></span></h4>
-    <textarea class="data"></textarea>
+      <div class="top">
+        <div class="right"><button id="flag">FOLLOW</button></div>
+        <div id="tail-top" class="left"><h4><a href="/">WebTail</a> / <span rel="title"></span></h4></div>
+      </div>
+      <div id="tail-data" class="data"></div>
     </div>
     <div id="log"></div>
     <hr>
-    <div id="bottom">Powered by <a href='https://github.com/LeKovr/webtail'>WebTail</a></div>
+    <div class="bottom">Powered by <a href='https://github.com/LeKovr/webtail'>WebTail</a></div>
 	</body>
 </html>

@@ -12,7 +12,7 @@ th, td {
   padding: 5px;
 }
 
-#bottom {
+.bottom {
   text-align:right;
   font-size: 9pt;
 }
@@ -23,10 +23,42 @@ th, td {
 
 .content {
   width:95%;
-  height:90%;
+  min-height:300px;
 }
 
 .data {
   width: 95vw;
-  height: 90vh;
+  font-family: monospace;
+  padding-top:38px;
+}
+
+.top {
+  overflow: hidden;
+  position:fixed;
+  width:100%;
+  top:0px;
+}
+.right {
+  float: right;
+  text-align: right;
+  padding-right: 20px;
+  width: 200px;
+  height: 34px;
+  font-color: #888;
+  background: #f2f2f2;
+  padding-top: 4px;
+}
+
+.right label {
+   vertical-align: top;
+}
+
+.left {
+  height: 38px;
+  overflow: hidden;
+  background: #f2f2f2;
+}
+
+h4 {
+  margin: 6px;
 }

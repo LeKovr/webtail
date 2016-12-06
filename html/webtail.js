@@ -6,7 +6,9 @@
 var WebTail = {
     uri: location.host + '/tail',
     every: 500,
-    timeInMs: Date.now()
+    timeInMs: Date.now(),
+    scrolled: false
+
     // ws
     // logs
 };
@@ -47,7 +49,8 @@ function showFiles(files) {
   var row = $('table.table tbody tr:last');
   var splitter = /^(.+)\/([^/]+)$/;
   var prevDir = '';
-
+  var needHttp = document.getElementById("logtype").checked;
+  var isHttp = /^http\//;
   var sorted = Object.keys(files).sort().forEach( function(s) {
     var f = files[s];
     var p = row.clone();
@@ -65,16 +68,24 @@ function showFiles(files) {
     p.find('[rel="path"]')[0].innerHTML = path;
     p.find('[rel="size"]')[0].innerHTML = sizeFormatted(f.size);
     p.find('[rel="mtime"]')[0].innerHTML = dateFormatted(f.mtime);
-    p.find('[rel="link"]').attr("href", '#' + s).text(name);
-    p.removeClass('hide');
+    if (f.size > 0) p.find('[rel="link"]').attr("href", '#' + s);
+    p.find('[rel="link"]').text(name);
+    var pIsHttp = isHttp.test(s);
+    if (pIsHttp == needHttp) p.removeClass('hide');
+    if (pIsHttp) {
+      p.addClass('ishttp');
+    } else {
+      p.addClass('nohttp');
+    }
   } );
 }
 
 // Start tail
 function tail(file) {
-    $('#copied').text('');
-    $('#src').find('[rel="title"]')[0].innerHTML = file;
-    $('#src').clone().attr("id", "tail-data").appendTo('#copied').removeClass('hide');
+    $('#tail-data').text('');
+    $('#tail-top').find('[rel="title"]')[0].innerHTML = file;
+    $('#index').addClass('hide');
+    $('#src').removeClass('hide');
     var m = JSON.stringify({channel: file})
     console.debug("send: "+m);
     WebTail.ws.send(m);
@@ -122,10 +133,11 @@ function connect() {
       if (m.channel == undefined) {
         showFiles(m.message);
       } else {
-        var $area = $('#tail-data .data');
-        $area.append(m.message + "\n");
+        var $area = $('#tail-data');
+        $area.append(document.createTextNode(m.message));
+        $area.append("<br />");
         if (Date.now() - WebTail.timeInMs > WebTail.every) {
-          $area.scrollTop($area[0].scrollHeight - $area.height());
+          updateScroll();
           WebTail.timeInMs = Date.now();
         }
       }
@@ -136,9 +148,40 @@ function connect() {
   }
 }
 
-// Open websocket on start
+// scroll window to bottom
+function updateScroll(){
+  if(!WebTail.scrolled){
+    window.scrollTo(0,document.body.scrollHeight);
+  }
+}
+
 $(function() {
+  // Open websocket on start
   connect();
+
+  // setup index filter
+  $('#logtype').change(function() {
+    if ($(this).is(":checked")) {
+      $('.nohttp').addClass('hide');
+      $('.ishttp').removeClass('hide');
+    } else {
+      $('.ishttp').addClass('hide');
+      $('.nohttp').removeClass('hide');
+    }
+  });
+  $('#flag').click(function() {
+    window.scrollTo(0,document.body.scrollHeight);
+  });
+});
+
+$(window).scroll(function() {
+  if ($(window).scrollTop() + $(window).height() == $(document).height()) {
+     WebTail.scrolled = false; // user scrolled to bottom
+     $('#flag').prop("disabled", true);
+  } else {
+     WebTail.scrolled = true; // user scrolls up - switch autoscroll off
+    $('#flag').prop("disabled", false);
+  }
 });
 
 // Any click change hash => show page
