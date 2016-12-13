@@ -32,7 +32,8 @@ Acknowledgements
 
 ### TODO
 
-* reopen tail after extra long lone
+* reopen tail after extra long line
+* don't disable follow after pause
 
 License
 -------

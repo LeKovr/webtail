@@ -5,12 +5,12 @@
 
 var WebTail = {
     uri: location.host + '/tail',
-    every: 500,
-    timeInMs: Date.now(),
-    scrolled: false
-
-    // ws
-    // logs
+    file: '',         // log file name in tail mode
+    every: 10,        // scroll after 0.01 sec
+    wait: false,      // scroll activated
+    scrolled: false,  // scroll allowed
+    focused: true,    // window is focused
+    unread: 0         // new rows when not focused
 };
 
 // Format datetime
@@ -80,9 +80,21 @@ function showFiles(files) {
   } );
 }
 
+function titleReset() {
+  if (WebTail.file != '')
+    document.title = WebTail.file + ' - WebTail';
+}
+
+function titleUnread(s) {
+    if (s > 999) s = '***';
+    document.title = '(' + s + ') ' + WebTail.file + ' - WebTail';
+}
+
 // Start tail
 function tail(file) {
     $('#tail-data').text('');
+    WebTail.file = file;
+    titleReset();
     $('#tail-top').find('[rel="title"]')[0].innerHTML = file;
     $('#index').addClass('hide');
     $('#src').removeClass('hide');
@@ -136,9 +148,12 @@ function connect() {
         var $area = $('#tail-data');
         $area.append(document.createTextNode(m.message));
         $area.append("<br />");
-        if (Date.now() - WebTail.timeInMs > WebTail.every) {
-          updateScroll();
-          WebTail.timeInMs = Date.now();
+        if (!WebTail.focused) {
+          titleUnread(++WebTail.unread);
+        }
+        if (!WebTail.wait) {
+          setTimeout(updateScroll,WebTail.every);
+          WebTail.wait = true;
         }
       }
     };
@@ -153,6 +168,7 @@ function updateScroll(){
   if(!WebTail.scrolled){
     window.scrollTo(0,document.body.scrollHeight);
   }
+  WebTail.wait = false;
 }
 
 $(function() {
@@ -188,6 +204,18 @@ $(window).scroll(function() {
 window.onhashchange = function() {
   showPage();
 }
+
+// Set flag & clear title
+window.onfocus = function() {
+  WebTail.focused = true;
+  titleReset();
+};
+
+// Reset flag
+window.onblur = function() {
+    WebTail.focused = false;
+    WebTail.unread = 0;
+};
 
 // JSON datetime parser
 // code from https://weblog.west-wind.com/posts/2014/jan/06/javascript-json-date-parsing-and-real-dates
