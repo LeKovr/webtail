@@ -32,8 +32,10 @@ Acknowledgements
 
 ### TODO
 
-* reopen tail after extra long line
-* don't disable follow after pause
+* [ ] reopen tail after extra long line
+* [ ] js: don't enable "follow" button on big update
+* [ ] js: add "clear log" button
+* [ ] add text field for log filtering
 
 License
 -------
