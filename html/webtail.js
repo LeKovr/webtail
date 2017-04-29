@@ -10,7 +10,8 @@ var WebTail = {
     wait: false,      // scroll activated
     scrolled: false,  // scroll allowed
     focused: true,    // window is focused
-    unread: 0         // new rows when not focused
+    unread: 0,        // new rows when not focused
+    title: ''         // page title
 };
 
 // Format datetime
@@ -81,13 +82,16 @@ function showFiles(files) {
 }
 
 function titleReset() {
-  if (WebTail.file != '')
-    document.title = WebTail.file + ' - WebTail';
+  if (WebTail.file != '') {
+    document.title = WebTail.file + WebTail.title + ' - WebTail';
+  } else {
+    document.title = 'Log Index' + WebTail.title + ' - WebTail';
+  }
 }
 
 function titleUnread(s) {
     if (s > 999) s = '***';
-    document.title = '(' + s + ') ' + WebTail.file + ' - WebTail';
+    document.title = '(' + s + ') ' + WebTail.file + WebTail.title + ' - WebTail';
 }
 
 // Start tail
@@ -127,6 +131,9 @@ function connect() {
       if (WebTail.logs == undefined) {
         showPage();
       }
+      var m = JSON.stringify({channel: '?'}); // get hostname
+      console.debug("send: "+m);
+      WebTail.ws.send(m);
     }
 
     WebTail.ws.onclose = function() {
@@ -144,6 +151,9 @@ function connect() {
 
       if (m.channel == undefined) {
         showFiles(m.message);
+      } else if (m.channel == '?') {
+        WebTail.title = ' - ' + m.message;
+        titleReset();
       } else {
         var $area = $('#tail-data');
         $area.append(document.createTextNode(m.message));
@@ -194,7 +204,7 @@ $(window).scroll(function() {
   if ($(window).scrollTop() + $(window).height() == $(document).height()) {
      WebTail.scrolled = false; // user scrolled to bottom
      $('#flag').prop("disabled", true);
-  } else {
+  } else if (!WebTail.wait) {
      WebTail.scrolled = true; // user scrolls up - switch autoscroll off
     $('#flag').prop("disabled", false);
   }

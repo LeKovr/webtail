@@ -24,6 +24,7 @@ import (
 // Flags defines local application flags
 type Flags struct {
 	Addr     string `long:"http_addr"   default:"localhost:8080" description:"Http listen address"`
+	Host     string `long:"host"        default:""               description:"Hostname for page title"`
 	LogLevel string `long:"log_level"   default:"info"           description:"Log level [warn|info|debug]"`
 	Root     string `long:"root"        default:"log/"           description:"Root directory for log files"`
 	Lines    string `long:"lines"       default:"20"             description:"Show N lines at start (see tail -n)"`
@@ -93,6 +94,18 @@ func tailHandler(ws *websocket.Conn) {
 			break
 		}
 
+		if m.Channel == "?" {
+			lg.Print("debug: Requested hostname" + m.Channel)
+			if cfg.Host != "" {
+				m2 := message{Channel: "?", Message: cfg.Host}
+				if err = websocket.JSON.Send(ws, m2); err != nil {
+					lg.Println("info: Can't send host:", err)
+					break
+				}
+			}
+			continue
+		}
+
 		logs, err := loadLogs()
 		if err != nil {
 			lg.Println("info: loadlogs:", err)
@@ -129,11 +142,12 @@ func tailHandler(ws *websocket.Conn) {
 			lg.Printf("debug: Sending line: %s", line)
 			m2 := message{Channel: m.Channel, Message: line}
 			if err = websocket.JSON.Send(ws, m2); err != nil {
-				lg.Println("info: Can't send:", err)
+				// TODO: print if not "write: broken pipe" error - lg.Println("info: Can't send:", err)
 				break
 			}
 		}
-		t.Stop()
+		lg.Println("info: Stop")
+		_ = t.Stop()
 	}
 }
 
