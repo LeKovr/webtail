@@ -4,7 +4,7 @@
 */
 
 var WebTail = {
-    uri: location.host + '/tail',
+    uri: location.host + location.pathname + 'tail',
     file: '',         // log file name in tail mode
     every: 10,        // scroll after 0.01 sec
     wait: false,      // scroll activated
