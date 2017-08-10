@@ -6,9 +6,13 @@ WORKDIR /go/src/app
 COPY . .
 
 RUN go-wrapper download
-RUN CGO_ENABLED=0 GOOS=linux go build -a -o webtail
+RUN GOOS=linux go build -a -o webtail
 
-FROM scratch
+# Not use scratch because we need tail binary
+#RUN CGO_ENABLED=0 GOOS=linux go build -a -o webtail
+#FROM scratch
+
+FROM alpine:3.6
 
 WORKDIR /
 COPY --from=0 /go/src/app/webtail .
