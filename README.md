@@ -33,6 +33,7 @@ Acknowledgements
 ### TODO
 
 * [x] js: don't enable "follow" button on big update
+* [ ] js: add inputs for filter plain/green/yellow/red
 * [ ] reopen tail after extra long line
 * [ ] js: add "clear log" button
 * [ ] add text field for log filtering
