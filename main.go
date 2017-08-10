@@ -23,7 +23,7 @@ import (
 
 // Flags defines local application flags
 type Flags struct {
-	Addr     string `long:"http_addr"   default:"localhost:8080" description:"Http listen address"`
+	Addr     string `long:"http_addr"   default:":8080"          description:"Http listen address"`
 	Host     string `long:"host"        default:""               description:"Hostname for page title"`
 	LogLevel string `long:"log_level"   default:"info"           description:"Log level [warn|info|debug]"`
 	Root     string `long:"root"        default:"log/"           description:"Root directory for log files"`
