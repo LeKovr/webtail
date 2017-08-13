@@ -126,7 +126,7 @@ function connect() {
   try {
 
     var host = 'ws';
-    if (window.location.protocol == 'https') host = 'wss';
+    if (window.location.protocol == 'https:') host = 'wss';
     host = host + '://' + WebTail.uri;
     WebTail.ws = new WebSocket(host);
 
