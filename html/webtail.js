@@ -124,7 +124,10 @@ function showPage() {
 // Setup websocket
 function connect() {
   try {
-    var host = 'ws://' + WebTail.uri;
+
+    var host = 'ws';
+    if (window.location.protocol == 'https') host = 'wss';
+    host = host + '://' + WebTail.uri;
     WebTail.ws = new WebSocket(host);
 
     WebTail.ws.onopen = function() {
