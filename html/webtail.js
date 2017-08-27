@@ -11,7 +11,8 @@ var WebTail = {
     scrolled: false,  // scroll allowed
     focused: true,    // window is focused
     unread: 0,        // new rows when not focused
-    title: ''         // page title
+    title: '',        // page title
+    timer: null       // keepalive timer
 };
 
 // Format datetime
@@ -121,6 +122,17 @@ function showPage() {
     }
 }
 
+// websocker keepalive
+function keepAlive() {
+    var timeout = 20000;
+    var m = JSON.stringify({channel: '#'}); // get files
+
+    if (WebTail.ws.readyState == WebTail.ws.OPEN) {
+        WebTail.ws.send(m);
+    }
+    WebTail.timer = setTimeout(keepAlive, timeout);
+}  
+
 // Setup websocket
 function connect() {
   try {
@@ -137,10 +149,15 @@ function connect() {
       var m = JSON.stringify({channel: '?'}); // get hostname
       console.debug("send: "+m);
       WebTail.ws.send(m);
+      keepAlive();
     }
 
     WebTail.ws.onclose = function() {
+
       $("#log").text('Connection closed');
+      if (WebTail.timer) {
+        clearTimeout(WebTail.timer);
+      }
     }
 
     WebTail.ws.onerror = function(e) {
@@ -154,6 +171,8 @@ function connect() {
 
       if (m.channel == undefined) {
         showFiles(m.message);
+      } else if (m.channel == '#') {
+        // pong received
       } else if (m.channel == '?') {
         WebTail.title = ' - ' + m.message;
         titleReset();

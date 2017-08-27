@@ -83,9 +83,9 @@ func loadLogs() (files FileStore, err error) {
 // -----------------------------------------------------------------------------
 
 func tailHandler(ws *websocket.Conn) {
-	var err error
-	var m message
 	for {
+		var err error
+		var m message
 		// receive a message using the codec
 		if err = websocket.JSON.Receive(ws, &m); err != nil {
 			if err != io.EOF {
@@ -95,13 +95,21 @@ func tailHandler(ws *websocket.Conn) {
 		}
 
 		if m.Channel == "?" {
-			lg.Print("debug: Requested hostname" + m.Channel)
+			lg.Print("debug: Requested hostname")
 			if cfg.Host != "" {
 				m2 := message{Channel: "?", Message: cfg.Host}
 				if err = websocket.JSON.Send(ws, m2); err != nil {
 					lg.Println("info: Can't send host:", err)
 					break
 				}
+			}
+			continue
+		}
+		if m.Channel == "#" {
+			lg.Print("debug: Requested ping")
+			if err = websocket.JSON.Send(ws, m); err != nil {
+				lg.Println("info: Can't send pong:", err)
+				break
 			}
 			continue
 		}
