@@ -33,9 +33,10 @@ Acknowledgements
 ### TODO
 
 * [x] js: don't enable "follow" button on big update
+* [x] go: use https://github.com/hpcloud/tail instead https://github.com/LeKovr/tail
 * [ ] js: add inputs for filter plain/green/yellow/red
-* [ ] reopen tail after extra long line
-* [ ] js: add "clear log" button
+* [ ] go: use https://github.com/gorilla/websocket instead https://golang.org/x/net/websocket
+* [ ] js: reconnect ws on close
 * [ ] add text field for log filtering
 
 License

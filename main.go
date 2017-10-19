@@ -14,7 +14,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/LeKovr/tail"
+	"github.com/hpcloud/tail"
+
 	"github.com/comail/colog"
 	"github.com/jessevdk/go-flags"
 )
@@ -23,13 +24,14 @@ import (
 
 // Flags defines local application flags
 type Flags struct {
-	Addr     string `long:"http_addr"   default:":8080"          description:"Http listen address"`
-	Host     string `long:"host"        default:""               description:"Hostname for page title"`
-	LogLevel string `long:"log_level"   default:"info"           description:"Log level [warn|info|debug]"`
-	Root     string `long:"root"        default:"log/"           description:"Root directory for log files"`
-	Lines    string `long:"lines"       default:"20"             description:"Show N lines at start (see tail -n)"`
-	Length   int    `long:"length"      default:"10240"          description:"Single line buffer size"`
-	Version  bool   `long:"version"     description:"Show version and exit"`
+	Addr        string `long:"http_addr"   default:":8080"          description:"Http listen address"`
+	Host        string `long:"host"        default:""               description:"Hostname for page title"`
+	LogLevel    string `long:"log_level"   default:"info"           description:"Log level [warn|info|debug]"`
+	Root        string `long:"root"        default:"log/"           description:"Root directory for log files"`
+	Back        int64  `long:"back"        default:"5000"           description:"tail from the last Nth location"`
+	MaxLineSize int    `long:"split"       default:"180"            description:"min line size for split"`
+	Poll        bool   `long:"p"           description:"use polling, instead of inotify"`
+	Version     bool   `long:"version"     description:"Show version and exit"`
 }
 
 // Config holds all config vars
@@ -83,6 +85,8 @@ func loadLogs() (files FileStore, err error) {
 // -----------------------------------------------------------------------------
 
 func tailHandler(ws *websocket.Conn) {
+	var t *tail.Tail
+
 	for {
 		var err error
 		var m message
@@ -139,23 +143,59 @@ func tailHandler(ws *websocket.Conn) {
 			}
 			break
 		}
-		t, err := tail.TailFile(path.Join(cfg.Root, m.Channel), cfg.Lines, cfg.Length)
+
+		config := tail.Config{
+			Follow: true,
+			ReOpen: true,
+		}
+		config.MaxLineSize = cfg.MaxLineSize
+		config.Poll = cfg.Poll
+		filename := path.Join(cfg.Root, m.Channel)
+		lineIncomlete := false
+
+		if cfg.Back != 0 {
+			fi, err := os.Stat(filename)
+			if err != nil {
+				lg.Println("warn: file stat: ", err)
+				break
+			}
+			// get the file size
+			size := fi.Size()
+			if size > cfg.Back {
+				config.Location = &tail.SeekInfo{-cfg.Back, os.SEEK_END}
+				lineIncomlete = true
+			}
+		}
+		t, err = tail.TailFile(filename, config)
 		if err != nil {
-			lg.Println("info: tail:", err)
+			lg.Println("warn: tail start: ", err)
 			break
 		}
 
 		for line := range t.Lines {
+			if lineIncomlete {
+				// 1st line after offset might be incomplete - so skip it
+				lineIncomlete = false
+				continue
+			}
 			// send a response
-			lg.Printf("debug: Sending line: %s", line)
-			m2 := message{Channel: m.Channel, Message: line}
+			lg.Printf("debug: Sending line: %s", line.Text)
+			m2 := message{Channel: m.Channel, Message: line.Text}
 			if err = websocket.JSON.Send(ws, m2); err != nil {
 				// TODO: print if not "write: broken pipe" error - lg.Println("info: Can't send:", err)
 				break
 			}
 		}
+		err = t.Wait()
+		if err != nil {
+			lg.Println("warn: tail run: ", err)
+			break
+		}
 		lg.Println("info: Stop")
-		_ = t.Stop()
+	}
+	if t != nil {
+		lg.Println("info: Cleanup")
+		t.Cleanup()
 	}
 }
 

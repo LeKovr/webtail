@@ -38,7 +38,7 @@ all:
 
 ## build and run in foreground
 run: build
-	./$(PRGPATH) --log_level debug --root log/ --lines 200 --host localhost
+	./$(PRGPATH) --log_level debug --root log/ --host localhost
 
 ## build and show program help
 help: build
