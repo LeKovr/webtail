@@ -9,10 +9,12 @@ var WebTail = {
     every: 10,        // scroll after 0.01 sec
     wait: false,      // scroll activated
     scrolled: false,  // scroll allowed
-    focused: true,    // window is focused
+    focused: false,    // window is not focused
     unread: 0,        // new rows when not focused
     title: '',        // page title
-    timer: null       // keepalive timer
+    timer: null,      // keepalive timer
+    timeout: 20000    // ping & reconnect timeout
+
 };
 
 // Format datetime
@@ -103,7 +105,7 @@ function tail(file) {
     $('#tail-top').find('[rel="title"]')[0].innerHTML = file;
     $('#index').addClass('hide');
     $('#src').removeClass('hide');
-    var m = JSON.stringify({channel: file})
+    var m = JSON.stringify({type: 'attach', channel: file})
     console.debug("send: "+m);
     WebTail.ws.send(m);
 }
@@ -114,7 +116,7 @@ function showPage() {
       if (WebTail.logs != undefined) {
         location.reload(true); // TODO: reopen socket
       }
-      var m = '{}';
+      var m = JSON.stringify({type: 'list'})
       console.debug("send: "+m);
       WebTail.ws.send(m);
     } else {
@@ -124,14 +126,12 @@ function showPage() {
 
 // websocker keepalive
 function keepAlive() {
-    var timeout = 20000;
-    var m = JSON.stringify({channel: '#'}); // get files
-
+    var m = JSON.stringify({type: 'ping'});
     if (WebTail.ws.readyState == WebTail.ws.OPEN) {
         WebTail.ws.send(m);
     }
-    WebTail.timer = setTimeout(keepAlive, timeout);
-}  
+    WebTail.timer = setTimeout(keepAlive, WebTail.timeout);
+}
 
 // Setup websocket
 function connect() {
@@ -146,7 +146,7 @@ function connect() {
       if (WebTail.logs == undefined) {
         showPage();
       }
-      var m = JSON.stringify({channel: '?'}); // get hostname
+      var m = JSON.stringify({type: 'host'}); // get hostname
       console.debug("send: "+m);
       WebTail.ws.send(m);
       keepAlive();
@@ -158,6 +158,7 @@ function connect() {
       if (WebTail.timer) {
         clearTimeout(WebTail.timer);
       }
+      WebTail.timer = setTimeout(connect, WebTail.timeout);
     }
 
     WebTail.ws.onerror = function(e) {
@@ -169,16 +170,18 @@ function connect() {
       console.debug("got "+e.data);
       $("#log").text('');
 
-      if (m.channel == undefined) {
-        showFiles(m.message);
-      } else if (m.channel == '#') {
+      if (m.type == 'list') {
+        showFiles(m.data);
+      } else if (m.type == 'pong') {
         // pong received
-      } else if (m.channel == '?') {
-        WebTail.title = ' - ' + m.message;
+      } else if (m.type == 'attach') {
+        // tail attached
+      } else if (m.type == 'host') {
+        WebTail.title = ' - ' + m.data;
         titleReset();
-      } else {
+      } else if (m.type == 'log') {
         var $area = $('#tail-data');
-        $area.append(document.createTextNode(m.message));
+        $area.append(document.createTextNode(m.data));
         $area.append("<br />");
         if (!WebTail.focused) {
           titleUnread(++WebTail.unread);
@@ -187,6 +190,10 @@ function connect() {
           setTimeout(updateScroll,WebTail.every);
           WebTail.wait = true;
         }
+      } else if (m.type == 'error') {
+        console.warn("server error: %o", m);
+      } else {
+        console.warn("unknown response: %o", m);
       }
     };
 

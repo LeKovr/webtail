@@ -5,8 +5,8 @@ SHELL      = /bin/bash
 
 # application name
 PRG       ?= $(shell basename $$PWD)
-SOURCES   ?= *.go
-SOURCEDIR ?= "."
+SOURCES   ?= *.go */*.go
+SOURCEDIR ?= ". tailman"
 
 # Runtime data
 DB_NAME   ?= dbrpc
