@@ -32,7 +32,7 @@ DC_IMAGE      ?= webtail
 DC_VER        ?= 1.14.0
 
 # golang image version
-GO_VER        ?= latest
+GO_VER        ?= 1.9.2-alpine3.6
 
 # docker app for change inside containers
 DOCKER_BIN    ?= docker
