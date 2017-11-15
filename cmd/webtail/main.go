@@ -13,8 +13,8 @@ import (
 	"github.com/jessevdk/go-flags"
 
 	"github.com/LeKovr/go-base/log"
-	"github.com/LeKovr/webtail/manager"
 	"github.com/LeKovr/webtail/api"
+	"github.com/LeKovr/webtail/manager"
 )
 
 // -----------------------------------------------------------------------------
@@ -40,7 +40,7 @@ func main() {
 
 	cfg, lg := setUp()
 	lg.Printf("info: %s v %s. WebTail, tail logfiles via web", path.Base(os.Args[0]), Version)
-	lg.Print("info: Copyright (C) 2016, Alexey Kovrizhkin <ak@elfire.ru>")
+	lg.Print("info: Copyright (C) 2016-2017, Alexey Kovrizhkin <lekovr+webtail@gmail.com>")
 
 	_, err := os.Stat(cfg.Tail.Root)
 	panicIfError(lg, err, "Logfile root dir")

@@ -146,7 +146,7 @@ func webtailJs() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "webtail.js", size: 7752, mode: os.FileMode(436), modTime: time.Unix(1509214887, 0)}
+	info := bindataFileInfo{name: "webtail.js", size: 7752, mode: os.FileMode(436), modTime: time.Unix(1510746001, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }

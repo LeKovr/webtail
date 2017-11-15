@@ -35,7 +35,7 @@ See [docker-compose.yml](docker-compose.yml) for usage example.
 ## Note about gorilla/websocket
 
 Not choosen because [Connections support one concurrent reader and one concurrent writer](https://godoc.org/github.com/gorilla/websocket).
-But we need two writers (one for tail and one for command responses)
+But we need two writers (one for tail and one for command responses). May be we join these writers in future.
 
 ## TODO
 
