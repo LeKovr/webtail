@@ -5,6 +5,9 @@ FROM golang:$golang_version
 
 MAINTAINER Alexey Kovrizhkin <lekovr+docker@gmail.com>
 
+# alpine does not have these apps
+RUN apk add --no-cache make bash git curl
+
 WORKDIR /go/src/github.com/LeKovr/webtail
 COPY cmd cmd
 COPY html html
