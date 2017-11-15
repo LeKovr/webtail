@@ -181,7 +181,7 @@ func (tm Manager) newTail(name string) (*tail.Tail, bool, error) {
 		// get the file size
 		size := fi.Size()
 		if size > cfg.Bytes {
-			config.Location = &tail.SeekInfo{-cfg.Bytes, os.SEEK_END}
+			config.Location = &tail.SeekInfo{Offset: -cfg.Bytes, Whence: os.SEEK_END}
 			lineIncomlete = true
 		}
 	}
