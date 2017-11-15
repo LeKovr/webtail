@@ -1,7 +1,9 @@
 
-ARG golang_version
+# cloud.docker.com do not use ARG, we do now use hooks
+# ARG golang_version
+# FROM golang:$golang_version
 
-FROM golang:$golang_version
+FROM golang:1.9.2-alpine3.6
 
 MAINTAINER Alexey Kovrizhkin <lekovr+docker@gmail.com>
 
