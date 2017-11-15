@@ -1,4 +1,5 @@
 dist
-webtail_*
+webtail*
 log
 var
+vendor

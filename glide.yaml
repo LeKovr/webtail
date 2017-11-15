@@ -1,0 +1,12 @@
+package: github.com/LeKovr/webtail
+import:
+- package: github.com/LeKovr/go-base
+  subpackages:
+  - log
+- package: github.com/comail/colog
+- package: github.com/elazarl/go-bindata-assetfs
+- package: github.com/hpcloud/tail
+- package: github.com/jessevdk/go-flags
+- package: golang.org/x/net
+  subpackages:
+  - websocket

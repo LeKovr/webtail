@@ -1,20 +1,28 @@
-FROM golang:latest
+
+ARG golang_version
+
+FROM golang:$golang_version
 
 MAINTAINER Alexey Kovrizhkin <lekovr+docker@gmail.com>
 
-WORKDIR /go/src/app
-COPY . .
+WORKDIR /go/src/github.com/LeKovr/webtail
+COPY cmd cmd
+COPY html html
+COPY manager manager
+COPY api api
+COPY Makefile .
+COPY glide.* ./
 
-RUN go-wrapper download
-RUN CGO_ENABLED=0 GOOS=linux go build -a -o webtail
+RUN go get -u github.com/golang/lint/golint
+RUN make vendor
+RUN make build-standalone
 
-# Not use scratch because we need tail binary
-#FROM scratch
+FROM scratch
 
-FROM alpine:3.6
+VOLUME /data
 
 WORKDIR /
-COPY --from=0 /go/src/app/webtail .
+COPY --from=0 /go/src/github.com/LeKovr/webtail/webtail .
 
 EXPOSE 8080
 ENTRYPOINT ["/webtail"]

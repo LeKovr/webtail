@@ -1,47 +1,27 @@
-package main
+// Package api contains all API interaction
+package api
 
 import (
 	"encoding/json"
-	"fmt"
 	"golang.org/x/net/websocket"
 	"io"
 	"net/http"
 	"os"
-	"path"
 	"path/filepath"
-	"runtime"
 	"strings"
+	"sync"
 	"time"
 
-	"github.com/jessevdk/go-flags"
-
 	"github.com/LeKovr/go-base/log"
-	"github.com/LeKovr/webtail/tailman"
+	"github.com/LeKovr/webtail/manager"
 )
 
 // -----------------------------------------------------------------------------
 
-// Flags defines local application flags
-type Flags struct {
-	Addr    string `long:"http_addr"   default:":8080"          description:"Http listen address"`
-	Host    string `long:"host"        default:""               description:"Hostname for page title"`
-	Version bool   `long:"version"     description:"Show version and exit"`
-}
-
-// Config holds all config vars
+// Config defines local application flags
 type Config struct {
-	Flags
-	Tail tailman.Config `group:"Tail Options"`
-	Log  LogConfig      `group:"Logging Options"`
-}
-
-// -----------------------------------------------------------------------------
-
-// Server holds service objects
-type Server struct {
-	Config  Config
-	Log     log.Logger
-	TailMan *tailman.TailMan
+	Host      string `long:"host"        default:""        description:"Hostname for page title"`
+	ListCache int    `long:"cache"       default:"2"       description:"Time to cache file listing (sec)"`
 }
 
 // -----------------------------------------------------------------------------
@@ -54,6 +34,17 @@ type FileAttr struct {
 
 // FileStore holds all log files attrs
 type FileStore map[string]*FileAttr
+
+// Server holds service objects
+type Server struct {
+	Config      Config
+	Root        string
+	Log         log.Logger
+	Manager     *manager.Manager
+	List        *FileStore
+	ListUpdated time.Time
+	lock        *sync.RWMutex
+}
 
 // -----------------------------------------------------------------------------
 
@@ -72,11 +63,13 @@ type listmessage struct {
 
 // -----------------------------------------------------------------------------
 
+// Client holds channel name & ws connection
 type Client struct {
 	Channel string
 	ws      *websocket.Conn
 }
 
+// Send sends line to client
 func (cl Client) Send(line string) error {
 	reply := message{Type: "log", Channel: cl.Channel, Data: line}
 	if err := websocket.JSON.Send(cl.ws, reply); err != nil {
@@ -88,28 +81,48 @@ func (cl Client) Send(line string) error {
 
 // -----------------------------------------------------------------------------
 
-func (srv Server) loadLogs() (files FileStore, err error) {
-	files = FileStore{}
-	dir := strings.TrimSuffix(srv.Config.Tail.Root, "/")
-	err = filepath.Walk(srv.Config.Tail.Root, func(path string, f os.FileInfo, err error) error {
+// LoadLogs loads file list
+func (srv *Server) LoadLogs() (*FileStore, error) {
+	files := FileStore{}
+	srv.lock.Lock()
+	defer srv.lock.Unlock()
+	if srv.ListUpdated.Add(time.Duration(srv.Config.ListCache) * time.Second).After(time.Now()) {
+		return srv.List, nil
+	}
+	srv.Log.Print("debug: Load file list")
+	dir := strings.TrimSuffix(srv.Root, "/")
+	err := filepath.Walk(srv.Root, func(path string, f os.FileInfo, err error) error {
 		if !f.IsDir() {
 			p := strings.TrimPrefix(path, dir+"/")
-			srv.Log.Printf("debug: found logfile %s", p)
+			// srv.Log.Printf("debug: found logfile %s", p)
 			files[p] = &FileAttr{MTime: f.ModTime(), Size: f.Size()}
 		}
 		return nil
 	})
-	return
+	if err != nil {
+		return nil, err
+	}
+	srv.ListUpdated = time.Now()
+	srv.List = &files
+	return srv.List, nil
 }
 
 // -----------------------------------------------------------------------------
 
-func (srv Server) handler(ws *websocket.Conn) {
-	var list *FileStore
+// Init inits server struct
+func (srv *Server) Init() {
+	srv.lock = &sync.RWMutex{}
+}
+
+// -----------------------------------------------------------------------------
+
+// Handler process client interaction
+func (srv Server) Handler(ws *websocket.Conn) {
 	tails := make(map[string]*Client)
 	for {
 		var err error
 		var m message
+		var list *FileStore
 		// receive a message using the codec
 		if err = websocket.JSON.Receive(ws, &m); err != nil {
 			if err != io.EOF {
@@ -123,14 +136,13 @@ func (srv Server) handler(ws *websocket.Conn) {
 		var reply interface{}
 
 		// load or refresh list
-		if m.Type == "list" || list == nil && (m.Type == "attach" || m.Type == "detach") {
-
-			if l, err := srv.loadLogs(); err != nil {
+		if m.Type == "list" || (m.Type == "attach" || m.Type == "detach") {
+			if l, err := srv.LoadLogs(); err != nil {
 				reply = message{Type: "error", Data: err.Error()}
 				srv.send(ws, reply)
 				continue
 			} else {
-				list = &l
+				list = l
 			}
 		}
 
@@ -143,6 +155,7 @@ func (srv Server) handler(ws *websocket.Conn) {
 			reply = listmessage{Type: "list", Data: *list}
 
 		case "attach":
+
 			if _, ok := (*list)[m.Channel]; !ok {
 				reply = message{Type: "error", Channel: m.Channel, Error: "Unknown channel"}
 			} else if _, ok := tails[m.Channel]; ok {
@@ -150,7 +163,7 @@ func (srv Server) handler(ws *websocket.Conn) {
 			} else {
 
 				cl := &Client{Channel: m.Channel, ws: ws}
-				if err = srv.TailMan.Attach(m.Channel, cl); err != nil {
+				if err = srv.Manager.Attach(m.Channel, cl); err != nil {
 					reply = message{Type: "error", Channel: m.Channel, Error: err.Error()}
 				} else {
 					reply = message{Type: "attach", Channel: m.Channel}
@@ -162,7 +175,7 @@ func (srv Server) handler(ws *websocket.Conn) {
 				reply = message{Type: "error", Channel: m.Channel, Error: "Unknown channel"}
 			} else if cl, ok := tails[m.Channel]; !ok {
 				reply = message{Type: "error", Channel: m.Channel, Error: "Not attached"}
-			} else if err = srv.TailMan.Detach(m.Channel, cl); err != nil {
+			} else if err = srv.Manager.Detach(m.Channel, cl); err != nil {
 				reply = message{Type: "error", Channel: m.Channel, Error: err.Error()}
 			} else {
 				reply = message{Type: "detach", Channel: m.Channel}
@@ -179,7 +192,7 @@ func (srv Server) handler(ws *websocket.Conn) {
 
 	if len(tails) != 0 {
 		for k, v := range tails {
-			srv.TailMan.Detach(k, v)
+			srv.Manager.Detach(k, v)
 		}
 	}
 
@@ -198,8 +211,9 @@ func (srv Server) send(ws *websocket.Conn, m interface{}) {
 
 // -----------------------------------------------------------------------------
 
-func (srv Server) statsHandler(w http.ResponseWriter, r *http.Request) {
-	data := srv.TailMan.Stats()
+// StatsHandler processes stats request
+func (srv Server) StatsHandler(w http.ResponseWriter, r *http.Request) {
+	data := srv.Manager.Stats()
 
 	js, err := json.Marshal(data)
 	if err != nil {
@@ -209,74 +223,4 @@ func (srv Server) statsHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(js)
-}
-
-// -----------------------------------------------------------------------------
-
-func main() {
-
-	cfg, lg := setUp()
-	lg.Printf("info: %s v %s. WebTail, tail logfiles via web", path.Base(os.Args[0]), Version)
-	lg.Print("info: Copyright (C) 2016, Alexey Kovrizhkin <ak@elfire.ru>")
-
-	_, err := os.Stat(cfg.Tail.Root)
-	panicIfError(lg, err, "Logfile root dir")
-
-	tm, err := tailman.New(lg, cfg.Tail)
-	panicIfError(lg, err, "Create tail manager")
-
-	srv := Server{
-		Config:  *cfg,
-		Log:     lg,
-		TailMan: tm,
-	}
-
-	logs, err := srv.loadLogs()
-	panicIfError(lg, err, "Load logfile list")
-	lg.Printf("info: Logfiles root %s contains %d item(s)", cfg.Tail.Root, len(logs))
-
-	http.Handle("/tail", websocket.Handler(srv.handler))
-	http.HandleFunc("/stats", srv.statsHandler)
-	http.Handle("/", http.FileServer(assetFS()))
-
-	lg.Printf("info: Listen at http://%s", cfg.Addr)
-	err = http.ListenAndServe(cfg.Addr, nil)
-	panicIfError(lg, err, "Listen")
-}
-
-// -----------------------------------------------------------------------------
-
-func setUp() (cfg *Config, lg log.Logger) {
-	cfg = &Config{}
-	p := flags.NewParser(cfg, flags.Default)
-
-	_, err := p.Parse()
-	if err != nil {
-		os.Exit(1) // error message written already
-	}
-	if cfg.Version {
-		// show version & exit
-		fmt.Printf("%s\n%s\n%s", Version, Build, Commit)
-		os.Exit(0)
-	}
-
-	// use all CPU cores for maximum performance
-	runtime.GOMAXPROCS(runtime.NumCPU())
-
-	lg, err = NewLog(cfg.Log)
-	panicIfError(nil, err, "Parse loglevel")
-	return
-}
-
-// -----------------------------------------------------------------------------
-
-func panicIfError(lg log.Logger, err error, msg string) {
-	if err != nil {
-		if lg != nil {
-			lg.Printf("error: %s error: %s", msg, err.Error())
-		} else {
-			fmt.Printf("error: %s error: %s", msg, err.Error())
-		}
-		os.Exit(1)
-	}
 }

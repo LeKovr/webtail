@@ -1,4 +1,5 @@
-package tailman
+// Package manager opens tails and manages them to clients
+package manager
 
 import (
 	"os"
@@ -22,6 +23,7 @@ type Config struct {
 	Keep        bool   `long:"keep"  description:"keep watches when all file clients leave"`
 }
 
+// Sender holds consumer
 type Sender interface {
 	Send(line string) error
 }
@@ -36,8 +38,8 @@ type Tail struct {
 	unregister chan Sender
 }
 
-// TailMan struct holds teil manager attributes
-type TailMan struct {
+// Manager struct holds tail manager attributes
+type Manager struct {
 	Config         Config
 	Log            log.Logger
 	lock           *sync.RWMutex
@@ -46,8 +48,8 @@ type TailMan struct {
 }
 
 // New creates tail manager
-func New(logger log.Logger, cfg Config) (*TailMan, error) {
-	return &TailMan{
+func New(logger log.Logger, cfg Config) (*Manager, error) {
+	return &Manager{
 		Config:         cfg,
 		Log:            logger,
 		lock:           &sync.RWMutex{},
@@ -57,12 +59,12 @@ func New(logger log.Logger, cfg Config) (*TailMan, error) {
 }
 
 // Attach creates tail worker if none and registers new tail Consumer
-func (tm *TailMan) Attach(filename string, s Sender) (err error) {
+func (tm *Manager) Attach(filename string, s Sender) (err error) {
 	// зарегать канал
 	tm.lock.RLock()
 	t, ok := tm.Producers[filename]
 	tm.lock.RUnlock()
-	// если нет читаки - запустить
+	// create producer if not exists
 	if !ok {
 		t, err = tm.newProducer(filename)
 		if err != nil {
@@ -81,7 +83,7 @@ func (tm *TailMan) Attach(filename string, s Sender) (err error) {
 }
 
 // Detach deregisters tail Consumer
-func (tm *TailMan) Detach(filename string, s Sender) error {
+func (tm *Manager) Detach(filename string, s Sender) error {
 	tm.lock.RLock()
 	t, ok := tm.Producers[filename]
 	tm.lock.RUnlock()
@@ -96,8 +98,7 @@ func (tm *TailMan) Detach(filename string, s Sender) error {
 }
 
 // Stats returns Consumers count per tailed file
-func (tm *TailMan) Stats() map[string]uint64 {
-	// зарегать канал
+func (tm *Manager) Stats() map[string]uint64 {
 	tm.lock.RLock()
 	defer tm.lock.RUnlock()
 	return tm.ConsumerCounts
@@ -105,7 +106,7 @@ func (tm *TailMan) Stats() map[string]uint64 {
 
 // newProducer method starts the run loop for the worker, listening for a quit channel in
 // case we need to stop it
-func (tm TailMan) newProducer(key string) (*Tail, error) {
+func (tm Manager) newProducer(key string) (*Tail, error) {
 	tf, lineIncomlete, err := tm.newTail(key)
 	if err != nil {
 		return nil, err
@@ -117,7 +118,7 @@ func (tm TailMan) newProducer(key string) (*Tail, error) {
 	}
 
 	go func() {
-		tm.Log.Printf("debug:Worker %s started", key)
+		tm.Log.Printf("debug: Worker %s started", key)
 		buf := []string{}
 		clients := make(map[Sender]bool)
 
@@ -147,11 +148,11 @@ func (tm TailMan) newProducer(key string) (*Tail, error) {
 					}
 				}
 				clients[client] = true
-				tm.Log.Printf("debug:Worker %s attached", key)
+				tm.Log.Printf("debug: Worker %s attached", key)
 			case client := <-t.unregister:
 				if _, ok := clients[client]; ok {
 					delete(clients, client)
-					tm.Log.Printf("debug:Worker %s detached", key)
+					tm.Log.Printf("debug: Worker %s detached", key)
 				}
 				// TODO: close worker if !tm.Cfg.Keep && !tm.ConsumersCount[id]
 			}
@@ -161,7 +162,7 @@ func (tm TailMan) newProducer(key string) (*Tail, error) {
 }
 
 // newTail creates new tailfile channel
-func (tm TailMan) newTail(name string) (*tail.Tail, bool, error) {
+func (tm Manager) newTail(name string) (*tail.Tail, bool, error) {
 	config := tail.Config{
 		Follow: true,
 		ReOpen: true,

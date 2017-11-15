@@ -9,11 +9,11 @@ var WebTail = {
     every: 10,        // scroll after 0.01 sec
     wait: false,      // scroll activated
     scrolled: false,  // scroll allowed
-    focused: false,    // window is not focused
+    focused: false,   // window is not focused
     unread: 0,        // new rows when not focused
     title: '',        // page title
     timer: null,      // keepalive timer
-    timeout: 20000    // ping & reconnect timeout
+    timeout: 5000     // ping & reconnect timeout
 
 };
 
@@ -51,6 +51,7 @@ function showFiles(files) {
   WebTail.logs = files;
   $('table.table thead tr:first').removeClass('hide'); // show header
   var row = $('table.table tbody tr:last');
+  $('table.table tbody').find("tr:not(:last)").remove();
   var splitter = /^(.+)\/([^/]+)$/;
   var prevDir = '';
   var needHttp = document.getElementById("logtype").checked;
@@ -126,9 +127,10 @@ function showPage() {
 
 // websocker keepalive
 function keepAlive() {
-    var m = JSON.stringify({type: 'ping'});
+    var m;
+    if (location.hash == "") {m = {type: 'list'}; } else { m = {type: 'ping'}; }
     if (WebTail.ws.readyState == WebTail.ws.OPEN) {
-        WebTail.ws.send(m);
+        WebTail.ws.send(JSON.stringify(m));
     }
     WebTail.timer = setTimeout(keepAlive, WebTail.timeout);
 }
