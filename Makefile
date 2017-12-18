@@ -7,7 +7,7 @@ SHELL          = /bin/bash
 
 GO            ?= go
 # not supported in BusyBox v1.26.2
-SOURCES        = manager/*.go api/*.go
+SOURCES        = worker/*.go tailer/*.go
 LIBS           = $(shell $(GO) list ./... | grep -vE '/(vendor|cmd)/')
 
 OS            ?= linux
@@ -59,7 +59,7 @@ all: help
 
 ## build and run in foreground
 run: build
-	./$(PRG) --log_level debug --root log/ --host localhost
+	./$(PRG) --log_level debug --root log/ --html html
 
 ## Generate protobuf & kvstore mock
 gen:

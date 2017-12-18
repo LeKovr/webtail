@@ -1,20 +1,19 @@
+
 //go:generate go-bindata -pkg $GOPACKAGE -prefix ../../html -o bindata.go ../../html/
+
 package main
 
 import (
 	"fmt"
-	"golang.org/x/net/websocket"
 	"net/http"
 	"os"
-	"path"
 	"runtime"
 
+	"github.com/LeKovr/go-base/log"
 	"github.com/elazarl/go-bindata-assetfs"
 	"github.com/jessevdk/go-flags"
 
-	"github.com/LeKovr/go-base/log"
-	"github.com/LeKovr/webtail/api"
-	"github.com/LeKovr/webtail/manager"
+	"github.com/LeKovr/webtail/tailer"
 )
 
 // -----------------------------------------------------------------------------
@@ -29,47 +28,35 @@ type Flags struct {
 // Config holds all config vars
 type Config struct {
 	Flags
-	Tail manager.Config `group:"Tail Options"`
-	API  api.Config     `group:"API Options"`
-	Log  LogConfig      `group:"Logging Options"`
+	Tail tailer.Config `group:"Tail Options"`
+	Log  LogConfig     `group:"Logging Options"`
 }
 
 // -----------------------------------------------------------------------------
 
 func main() {
-
 	cfg, lg := setUp()
-	lg.Printf("info: %s v %s. WebTail, tail logfiles via web", path.Base(os.Args[0]), Version)
+	lg.Printf("info: webtail v%s. WebTail, tail logfiles via web", Version)
 	lg.Print("info: Copyright (C) 2016-2017, Alexey Kovrizhkin <lekovr+webtail@gmail.com>")
 
-	_, err := os.Stat(cfg.Tail.Root)
-	panicIfError(lg, err, "Logfile root dir")
+	tail, err := tailer.New(lg, cfg.Tail)
+	panicIfError(nil, err, "New tail")
 
-	tm, err := manager.New(lg, cfg.Tail)
-	panicIfError(lg, err, "Create tail manager")
+	hub := newHub(lg, tail)
+	go hub.run()
 
-	srv := api.Server{
-		Config:  cfg.API,
-		Root:    cfg.Tail.Root,
-		Log:     lg,
-		Manager: tm,
-	}
-	srv.Init()
-
-	logs, err := srv.LoadLogs()
-	panicIfError(lg, err, "Load logfile list")
-	lg.Printf("info: Logfiles root %s contains %d item(s)", cfg.Tail.Root, len(*logs))
-
-	http.Handle("/tail", websocket.Handler(srv.Handler))
-	http.HandleFunc("/stats", srv.StatsHandler)
 	if cfg.HTML != "" {
 		http.Handle("/", http.FileServer(http.Dir(cfg.HTML)))
 	} else {
 		http.Handle("/", http.FileServer(&assetfs.AssetFS{Asset: Asset, AssetDir: AssetDir, AssetInfo: AssetInfo}))
 	}
-	lg.Printf("info: Listen at %s", cfg.Listen)
+	http.HandleFunc("/tail", func(w http.ResponseWriter, r *http.Request) {
+		serveWs(hub, w, r)
+	})
+	lg.Print("Listen: ", cfg.Listen)
 	err = http.ListenAndServe(cfg.Listen, nil)
-	panicIfError(lg, err, "Listen")
+	panicIfError(nil, err, "ListenAndServe")
+
 }
 
 // -----------------------------------------------------------------------------

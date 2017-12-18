@@ -34,16 +34,15 @@ See [docker-compose.yml](docker-compose.yml) for usage example.
 
 ## Note about gorilla/websocket
 
-Not choosen because [Connections support one concurrent reader and one concurrent writer](https://godoc.org/github.com/gorilla/websocket).
-But we need two writers (one for tail and one for command responses). May be we join these writers in future.
+Starting from v0.10 this code is based on [gorilla/websocket chat example](https://github.com/gorilla/websocket/tree/master/examples/chat). See cmd/webtail/{client,hub}.go
 
 ## TODO
 
 * [x] js: don't enable "follow" button on big update
 * [x] go: use https://github.com/hpcloud/tail instead https://github.com/LeKovr/tail
+* [x] js: reconnect ws on close
 * [ ] js: add inputs for filter plain/green/yellow/red
-* [ ] js: reconnect ws on close
-* [ ] add text field for log filtering
+* [ ] add text field for server-side log filtering
 
 ## License
 

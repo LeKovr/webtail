@@ -13,8 +13,8 @@ RUN apk add --no-cache make bash git curl
 WORKDIR /go/src/github.com/LeKovr/webtail
 COPY cmd cmd
 COPY html html
-COPY manager manager
-COPY api api
+COPY tailer tailer
+COPY worker worker
 COPY Makefile .
 COPY glide.* ./
 
