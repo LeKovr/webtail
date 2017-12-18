@@ -109,34 +109,36 @@ function tail(file) {
 
 // Show files or tail page, reload on browser's back button
 function showPage() {
-    if (location.hash == "") {
-      $('table.table tbody').find("tr:not(:last)").remove();
-      if (WebTail.file != '') {
-        var m = JSON.stringify({type: 'detach', channel: WebTail.file});
-        console.debug("send: "+m);
-        WebTail.ws.send(m);
-      }
-      WebTail.file = '';
-      titleReset();
-      $('#tail-top').find('[rel="title"]')[0].innerHTML = '';
-      $('#src').addClass('hide');
-      $('#index').removeClass('hide');
-      $('table.table thead tr:first').removeClass('hide'); // show header
-      var m = JSON.stringify({type: 'attach'})
+  WebTail.unread = 0;
+  WebTail.focused = true;
+  if (location.hash == "") {
+    $('table.table tbody').find("tr:not(:last)").remove();
+    if (WebTail.file != '') {
+      var m = JSON.stringify({type: 'detach', channel: WebTail.file});
       console.debug("send: "+m);
       WebTail.ws.send(m);
-    } else {
-      $('#tail-data').text('');
-      if (!$('#index').hasClass('hide')) {
-        $('#index').addClass('hide');
-        var m = JSON.stringify({type: 'detach'});
-        console.debug("send: "+m);
-        WebTail.ws.send(m);
     }
-    $('#src').removeClass('hide');
+    WebTail.file = '';
+    titleReset();
+    $('#tail-top').find('[rel="title"]')[0].innerHTML = '';
+    $('#src').addClass('hide');
+    $('#index').removeClass('hide');
+    $('table.table thead tr:first').removeClass('hide'); // show header
+    var m = JSON.stringify({type: 'attach'})
+    console.debug("send: "+m);
+    WebTail.ws.send(m);
+  } else {
+    $('#tail-data').text('');
+    if (!$('#index').hasClass('hide')) {
+      $('#index').addClass('hide');
+      var m = JSON.stringify({type: 'detach'});
+      console.debug("send: "+m);
+      WebTail.ws.send(m);
+  }
+  $('#src').removeClass('hide');
 
-      tail(location.hash.replace(/^#/,""));
-    }
+    tail(location.hash.replace(/^#/,""));
+  }
 }
 
 // Setup websocket
