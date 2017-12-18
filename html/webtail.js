@@ -65,15 +65,15 @@ function showFiles(file) {
         path = prevDir = a[1];
       }
     }
-    var id = 'channel-'+file.name.replace(/\//,'--','g').replace(/\./,'_','g');
-    if ($('#'+id).length == 0) {
+    var item = $('*[data-file="'+file.name+'"]');
+
+    if (item.length == 0) {
       row.before(p);
     } else {
-      $('#'+id).replaceWith(p);
+      item.replaceWith(p);
 //      $('#'+id).parent().replaceWith(p);
     }
-  console.log("ID:"+id);
-    p.attr("id",id);
+    p.attr("data-file",file.name);
     p.find('[rel="path"]')[0].innerHTML = path;
     p.find('[rel="size"]')[0].innerHTML = sizeFormatted(f.size);
     p.find('[rel="mtime"]')[0].innerHTML = dateFormatted(f.mtime);
@@ -137,11 +137,6 @@ function showPage() {
 
       tail(location.hash.replace(/^#/,""));
     }
-}
-
-// websocker keepalive
-function keepAlive() {
-//    WebTail.timer = setTimeout(keepAlive, WebTail.timeout);
 }
 
 // Setup websocket
@@ -241,7 +236,7 @@ $(window).scroll(function() {
 });
 
 // Any click change hash => show page
-window.onhashchange = function(a,b) {
+window.onhashchange = function() {
   showPage();
 }
 
