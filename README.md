@@ -34,7 +34,7 @@ See [docker-compose.yml](docker-compose.yml) for usage example.
 
 ## Note about gorilla/websocket
 
-Starting from v0.10 this code is based on [gorilla/websocket chat example](https://github.com/gorilla/websocket/tree/master/examples/chat). See cmd/webtail/{client,hub}.go
+Starting from v0.30 this code is based on [gorilla/websocket chat example](https://github.com/gorilla/websocket/tree/master/examples/chat). See cmd/webtail/{client,hub}.go
 
 ## TODO
 
