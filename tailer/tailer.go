@@ -41,6 +41,10 @@ type WorkerHub struct {
 
 // New creates tailer
 func New(logger log.Logger, cfg Config) (*WorkerHub, error) {
+	_, err := os.Stat(cfg.Root)
+	if err != nil {
+		return nil, err
+	}
 	return &WorkerHub{
 		Config: cfg,
 		Log:    logger,
