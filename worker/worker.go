@@ -18,6 +18,8 @@ type WorkerHub interface {
 	Append(channel string, data []byte) bool
 	Index() *IndexStore
 	Update(msg *Index)
+	SetTrace(bool)
+	TraceEnabled() bool
 }
 
 type Message struct {

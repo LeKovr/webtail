@@ -36,7 +36,6 @@ func (h *Hub) fromClient(msg *Message) bool {
 		h.log.Printf("warn: parse error: %+v", err)
 		return true
 	}
-	//	return h.out("error")
 	switch in.Type {
 	case "attach":
 		// проверить что путь зарегистрирован
@@ -114,8 +113,12 @@ func (h *Hub) fromClient(msg *Message) bool {
 		}
 
 	case "stats":
-		//вернуть массив счетчиков подписок на каналы
+		// вернуть массив счетчиков подписок на каналы
 		data, _ = json.Marshal(messageStats{Type: "stats", Data: h.stats})
+
+	case "trace":
+		// включить/выключить трассировку
+		h.wh.SetTrace(in.Channel == "on")
 
 	}
 	if len(data) > 0 {
@@ -128,8 +131,11 @@ func (h *Hub) fromClient(msg *Message) bool {
 // process message from worker
 func (h *Hub) fromWorker(msg *worker.Message) bool {
 
+	if h.wh.TraceEnabled() {
+		h.log.Printf("debug: Trace from Worker: (%+v)", msg)
+	}
+
 	data, _ := json.Marshal(messageOut{Type: "log", Data: msg.Data})
-	//h.log.Printf("debug: got2 log (%v)", msg.Data)
 
 	if !h.wh.Append(msg.Channel, data) {
 		return true
@@ -146,6 +152,10 @@ func (h *Hub) fromWorker(msg *worker.Message) bool {
 // process message from worker
 func (h *Hub) fromIndexer(msg *worker.Index) {
 
+	if h.wh.TraceEnabled() {
+		h.log.Printf("debug: Trace from Indexer: (%+v)", msg)
+	}
+
 	data, _ := json.Marshal(messageIndex{Type: "index", Data: *msg})
 
 	h.wh.Update(msg)
@@ -159,7 +169,7 @@ func (h *Hub) fromIndexer(msg *worker.Index) {
 
 func (h *Hub) send(client *Client, data []byte) {
 
-	h.log.Printf("debug:Send reply: %v", string(data))
+	h.log.Printf("debug: Send reply: %v", string(data))
 	select {
 	case client.send <- data:
 	default:

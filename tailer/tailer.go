@@ -18,17 +18,20 @@ type Config struct {
 	Root        string `long:"root"  default:"log/"  description:"Root directory for log files"`
 	Bytes       int64  `long:"bytes" default:"5000"  description:"tail from the last Nth location"`
 	Lines       int    `long:"lines" default:"100"   description:"keep N old lines for new consumers"`
-	MaxLineSize int    `long:"split" default:"180"   description:"min line size for split"`
+	MaxLineSize int    `long:"split" default:"180"   description:"split line if longer"`
 	Poll        bool   `long:"poll"  description:"use polling, instead of inotify"`
+	Trace       bool   `long:"trace" description:"trace worker channels"`
 	ListCache   int    `long:"cache"       default:"2"       description:"Time to cache file listing (sec)"`
 }
 
 type tailer struct {
+	// Store for last Config.Lines lines
 	Buffer [][]byte
 
 	// Unregister requests from clients.
 	Unregister chan bool
 
+	// Skip 1st line when read file not from start
 	Incomplete bool
 }
 
@@ -57,6 +60,14 @@ func New(logger log.Logger, cfg Config) (*WorkerHub, error) {
 func (wh *WorkerHub) WorkerExists(channel string) bool {
 	_, ok := wh.workers[channel]
 	return ok
+}
+
+func (wh *WorkerHub) SetTrace(on bool) {
+	wh.Log.Printf("warn: tracing set to %t", on)
+	wh.Config.Trace = on
+}
+func (wh *WorkerHub) TraceEnabled() bool {
+	return wh.Config.Trace
 }
 
 func (wh *WorkerHub) WorkerRun(channel string, out chan *worker.Message) error {
@@ -128,7 +139,7 @@ func (wh *WorkerHub) Append(channel string, data []byte) bool {
 }
 
 func (wh *WorkerHub) Index() *worker.IndexStore {
-	return &wh.index // TODO: sort?
+	return &wh.index
 }
 func (wh *WorkerHub) Update(msg *worker.Index) {
 	wh.index[msg.Name] = &worker.IndexItem{ModTime: msg.ModTime, Size: msg.Size}
@@ -140,7 +151,6 @@ func (wh *WorkerHub) worker(tf *tail.Tail, channel string, out chan *worker.Mess
 		select {
 		case line := <-tf.Lines:
 			out <- &worker.Message{Channel: channel, Data: line.Text}
-		//	wh.Log.Printf("debug: got log (%s)", line.Text)
 		case <-unregister:
 			tf.Cleanup()
 			return
