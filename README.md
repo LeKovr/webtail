@@ -14,6 +14,9 @@ webtail
 
 This service loads list of logfiles from directory tree & continuously shows result of chosen file tail via websocket.
 
+WARNING: Current version of this project is not intended for production use. This is proof-of-concept.
+Tests, docs and more than 1 committer is required for getting this project production-ready.
+
 ## Install
 
 ```

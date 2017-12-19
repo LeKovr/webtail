@@ -13,8 +13,8 @@ var WebTail = {
     unread: 0,        // new rows when not focused
     title: '',        // page title
     timer: null,      // keepalive timer
-    timeout: 5000     // ping & reconnect timeout
-
+    timeout: 5000,    // ping & reconnect timeout
+    attached: null    // attached channel
 };
 
 // Format datetime
@@ -105,18 +105,19 @@ function tail(file) {
     console.debug("send: "+m);
     WebTail.ws.send(m);
 }
-// WebTail.ws.send(JSON.stringify({type: 'stats'})
 
 // Show files or tail page, reload on browser's back button
 function showPage() {
   WebTail.unread = 0;
   WebTail.focused = true;
+  if (WebTail.attached != undefined) {
+      var m = JSON.stringify({type: 'detach', channel: WebTail.attached});
+      console.debug("send: "+m);
+      WebTail.ws.send(m);
+  }
   if (location.hash == "") {
     $('table.table tbody').find("tr:not(:last)").remove();
     if (WebTail.file != '') {
-      var m = JSON.stringify({type: 'detach', channel: WebTail.file});
-      console.debug("send: "+m);
-      WebTail.ws.send(m);
     }
     WebTail.file = '';
     titleReset();
@@ -131,14 +132,17 @@ function showPage() {
     $('#tail-data').text('');
     if (!$('#index').hasClass('hide')) {
       $('#index').addClass('hide');
-      var m = JSON.stringify({type: 'detach'});
-      console.debug("send: "+m);
-      WebTail.ws.send(m);
   }
   $('#src').removeClass('hide');
 
     tail(location.hash.replace(/^#/,""));
   }
+}
+
+// Show stats in console
+// TODO: may be add interface?
+function stats() {
+  WebTail.ws.send(JSON.stringify({type: 'stats'}))
 }
 
 // Setup websocket
@@ -151,6 +155,7 @@ function connect() {
     WebTail.ws = new WebSocket(host);
 
     WebTail.ws.onopen = function() {
+      console.debug('Connection opened');
       showPage();
     }
 
@@ -166,6 +171,7 @@ function connect() {
         clearTimeout(WebTail.timer);
       }
       WebTail.timer = setTimeout(connect, WebTail.timeout);
+      WebTail.attached = null;
     }
 
     WebTail.ws.onerror = function(e) {
@@ -182,8 +188,18 @@ function connect() {
 
         if (m.type == 'index') {
           showFiles(m.data);
+        } else if (m.type == 'detach') {
+          // tail detached
+          var mc = (m.channel != undefined)?m.channel:'';
+          if (mc == WebTail.attached) {
+            WebTail.attached = null;
+          }
         } else if (m.type == 'attach') {
           // tail attached
+          WebTail.attached = (m.channel != undefined)?m.channel:'';
+        } else if (m.type == 'stats') {
+          // TODO: stats requested by calling stats() in console
+          console.log(JSON.stringify(m.data, null, 4))
         } else if (m.type == 'log') {
           var $area = $('#tail-data');
           $area.append(document.createTextNode((m.data != undefined)?m.data:''));
@@ -197,6 +213,7 @@ function connect() {
           }
         } else if (m.type == 'error') {
           console.warn("server error: %o", m);
+          $('#log').text(m.data);
         } else {
           console.warn("unknown response: %o", m);
         }

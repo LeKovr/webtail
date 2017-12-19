@@ -8,3 +8,4 @@ import:
 - package: github.com/gorilla/websocket
 - package: github.com/hpcloud/tail
 - package: github.com/jessevdk/go-flags
+- package: github.com/fukata/golang-stats-api-handler

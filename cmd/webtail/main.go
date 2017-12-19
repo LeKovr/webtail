@@ -1,4 +1,3 @@
-
 //go:generate go-bindata -pkg $GOPACKAGE -prefix ../../html -o bindata.go ../../html/
 
 package main
@@ -8,6 +7,8 @@ import (
 	"net/http"
 	"os"
 	"runtime"
+
+	"github.com/fukata/golang-stats-api-handler"
 
 	"github.com/LeKovr/go-base/log"
 	"github.com/elazarl/go-bindata-assetfs"
@@ -53,6 +54,7 @@ func main() {
 	http.HandleFunc("/tail", func(w http.ResponseWriter, r *http.Request) {
 		serveWs(hub, w, r)
 	})
+	http.HandleFunc("/api/stats", stats_api.Handler)
 	lg.Print("Listen: ", cfg.Listen)
 	err = http.ListenAndServe(cfg.Listen, nil)
 	panicIfError(nil, err, "ListenAndServe")

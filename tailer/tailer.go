@@ -35,6 +35,7 @@ type tailer struct {
 	Incomplete bool
 }
 
+// WorkerHub holds Worker hub operations
 type WorkerHub struct {
 	Log     log.Logger
 	Config  Config
@@ -57,19 +58,38 @@ func New(logger log.Logger, cfg Config) (*WorkerHub, error) {
 	}, nil
 }
 
+// LoadIndex fills index map on program start
+func (wh *WorkerHub) LoadIndex(out chan *worker.Index) {
+	go wh.indexLoad(out, time.Time{})
+}
+
+// WorkerExists checks if worker already registered
 func (wh *WorkerHub) WorkerExists(channel string) bool {
 	_, ok := wh.workers[channel]
 	return ok
 }
 
+// ChannelExists checks if channel allowed to attach
+func (wh *WorkerHub) ChannelExists(channel string) bool {
+	if channel == "" {
+		return true
+	}
+	_, ok := wh.index[channel]
+	return ok
+}
+
+// SetTrace turns on/off logging of incoming workers messages
 func (wh *WorkerHub) SetTrace(on bool) {
 	wh.Log.Printf("warn: tracing set to %t", on)
 	wh.Config.Trace = on
 }
+
+// TraceEnabled returns trace state
 func (wh *WorkerHub) TraceEnabled() bool {
 	return wh.Config.Trace
 }
 
+// WorkerRun runs worker
 func (wh *WorkerHub) WorkerRun(channel string, out chan *worker.Message) error {
 
 	config := tail.Config{
@@ -106,6 +126,7 @@ func (wh *WorkerHub) WorkerRun(channel string, out chan *worker.Message) error {
 	return nil
 }
 
+// IndexRun runs indexer
 func (wh *WorkerHub) IndexRun(out chan *worker.Index) error {
 	unregister := make(chan bool)
 	wh.workers[""] = &tailer{Unregister: unregister}
@@ -113,6 +134,7 @@ func (wh *WorkerHub) IndexRun(out chan *worker.Index) error {
 	return nil
 }
 
+// WorkerStop stops worker or indexer
 func (wh *WorkerHub) WorkerStop(channel string) error {
 	w := wh.workers[channel]
 	w.Unregister <- true
@@ -120,10 +142,12 @@ func (wh *WorkerHub) WorkerStop(channel string) error {
 	return nil
 }
 
+// Buffer returns worker buffer
 func (wh *WorkerHub) Buffer(channel string) [][]byte {
 	return wh.workers[channel].Buffer
 }
 
+// Append adds a line into worker buffer
 func (wh *WorkerHub) Append(channel string, data []byte) bool {
 	if wh.workers[channel].Incomplete {
 		wh.workers[channel].Incomplete = false
@@ -138,21 +162,32 @@ func (wh *WorkerHub) Append(channel string, data []byte) bool {
 	return true
 }
 
+// Index returns index items
 func (wh *WorkerHub) Index() *worker.IndexStore {
 	return &wh.index
 }
+
+// Update updates item in index
 func (wh *WorkerHub) Update(msg *worker.Index) {
 	wh.index[msg.Name] = &worker.IndexItem{ModTime: msg.ModTime, Size: msg.Size}
 }
 
 func (wh *WorkerHub) worker(tf *tail.Tail, channel string, out chan *worker.Message, unregister chan bool) {
 
+	wh.Log.Printf("debug: worker for channel %s started", channel)
 	for {
 		select {
 		case line := <-tf.Lines:
+			//wh.Log.Printf("debug: got line for channel %s", channel)
+
 			out <- &worker.Message{Channel: channel, Data: line.Text}
 		case <-unregister:
-			tf.Cleanup()
+			err := tf.Stop() //Cleanup()
+			if err != nil {
+				wh.Log.Printf("warn: worker for channel %s stopped with error %v", channel, err)
+			} else {
+				wh.Log.Printf("debug: worker for channel %s stopped", channel)
+			}
 			return
 		}
 	}
@@ -166,6 +201,7 @@ func (wh *WorkerHub) indexRun(out chan *worker.Index, unregister chan bool) {
 	}()
 	last := time.Now()
 	wh.indexLoad(out, time.Time{})
+	wh.Log.Print("debug: indexer started")
 	for {
 		select {
 		case <-ticker.C:
@@ -174,6 +210,7 @@ func (wh *WorkerHub) indexRun(out chan *worker.Index, unregister chan bool) {
 			last = now
 
 		case <-unregister:
+			wh.Log.Print("debug: indexer stopped")
 			return
 		}
 	}

@@ -41,8 +41,8 @@ type Hub struct {
 	// Unregister requests from clients.
 	unregister chan *Client
 
-	// WorkerHub
-	wh worker.WorkerHub
+	// Worker Hub
+	wh worker.Hub
 
 	// Channel subscribers
 	subscribers map[string]subscribers
@@ -51,14 +51,14 @@ type Hub struct {
 	stats map[string]uint64
 }
 
-func newHub(logger log.Logger, wh worker.WorkerHub) *Hub {
+func newHub(logger log.Logger, wh worker.Hub) *Hub {
 	return &Hub{
 		log:         logger,
 		broadcast:   make(chan *Message),
 		register:    make(chan *Client),
 		unregister:  make(chan *Client),
 		clients:     make(map[*Client]bool),
-		receive:     make(chan *worker.Message),
+		receive:     make(chan *worker.Message), // 1),
 		index:       make(chan *worker.Index),
 		wh:          wh,
 		subscribers: make(map[string]subscribers),
@@ -67,6 +67,7 @@ func newHub(logger log.Logger, wh worker.WorkerHub) *Hub {
 }
 
 func (h *Hub) run() {
+	h.wh.LoadIndex(h.index)
 	for {
 		select {
 		case client := <-h.register:
@@ -74,15 +75,11 @@ func (h *Hub) run() {
 
 		case client := <-h.unregister:
 			if _, ok := h.clients[client]; ok {
-				delete(h.clients, client)
 				h.remove(client)
-				close(client.send)
 			}
 		case cmessage := <-h.broadcast:
 			// client sends attach/detach/?list
-			if !h.fromClient(cmessage) {
-				delete(h.clients, cmessage.Client)
-			}
+			h.fromClient(cmessage)
 		case wmessage := <-h.receive:
 			// worker sends file line
 			h.fromWorker(wmessage)

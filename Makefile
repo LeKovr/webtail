@@ -59,7 +59,7 @@ all: help
 
 ## build and run in foreground
 run: build
-	./$(PRG) --log_level debug --root log/ --html html
+	./$(PRG) --log_level debug --root log/ --html html --trace
 
 ## Generate protobuf & kvstore mock
 gen:
