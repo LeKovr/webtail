@@ -175,7 +175,7 @@ function connect() {
     }
 
     WebTail.ws.onerror = function(e) {
-      console.error(e.name + ': ' + e.message);
+      console.warn("connect error: %o", e);
       $('#log').text(e.name);
     }
 
