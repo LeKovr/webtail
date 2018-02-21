@@ -245,7 +245,7 @@ $(function() {
 });
 
 $(window).scroll(function() {
-  if ($(window).scrollTop() + $(window).height() == $(document).height()) {
+  if ($(window).scrollTop() + $(window).height() >= $(document).height()) {
      WebTail.scrolled = false; // user scrolled to bottom
      $('#flag').prop("disabled", true);
   } else if (!WebTail.wait) {
