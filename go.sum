@@ -2,6 +2,12 @@ github.com/LeKovr/go-base v0.0.0-20171028213907-e2d8736bc813 h1:93Ccc6bHhOqpf7ey
 github.com/LeKovr/go-base v0.0.0-20171028213907-e2d8736bc813/go.mod h1:j/QWsrvOBBQm6Nh6nXciPsyEevORNF1N2CWvbjl1wqQ=
 github.com/comail/colog v0.0.0-20160416085026-fba8e7b1f46c h1:bzYQ6WpR+t35/y19HUkolcg7SYeWZ15IclC9Z4naGHI=
 github.com/comail/colog v0.0.0-20160416085026-fba8e7b1f46c/go.mod h1:1WwgAwMKQLYG5I2FBhpVx94YTOAuB2W59IZ7REjSE6Y=
+github.com/davecgh/go-spew v1.1.0 h1:ZDRjVQ15GmhC3fiQ8ni8+OwkZQO4DARzQgrnXU1Liz8=
+github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
+github.com/dc0d/dirwatch v0.4.3 h1:IUhae5tTS2y1d6dNAnE+YefqT/J/htncoae7gqtlQK0=
+github.com/dc0d/dirwatch v0.4.3/go.mod h1:4wNUEWsMAfSX9uLxH5lkzfGFjoZgJ31bykXHHFr/l8A=
+github.com/dc0d/retry v1.2.0 h1:8I4AOwjVfC1z6e9sZYekeGrHeg7DH7K58V6VXoIUKn8=
+github.com/dc0d/retry v1.2.0/go.mod h1:40keYDLgOdt6RR70OTlC+Ud1rkUuI+mWRBJ6c06WYxc=
 github.com/elazarl/go-bindata-assetfs v1.0.0 h1:G/bYguwHIzWq9ZoyUQqrjTmJbbYn3j3CKKpKinvZLFk=
 github.com/elazarl/go-bindata-assetfs v1.0.0/go.mod h1:v+YaWX3bdea5J/mo8dSETolEo7R71Vk1u8bnjau5yw4=
 github.com/fukata/golang-stats-api-handler v1.0.0 h1:N6M25vhs1yAvwGBpFY6oBmMOZeJdcWnvA+wej8pKeko=

@@ -7,9 +7,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/LeKovr/go-base/log"
+	"github.com/dc0d/dirwatch"
 	"github.com/hpcloud/tail"
 
-	"github.com/LeKovr/go-base/log"
 	"github.com/LeKovr/webtail/worker"
 )
 
@@ -169,6 +170,10 @@ func (wh *WorkerHub) Index() *worker.IndexStore {
 
 // Update updates item in index
 func (wh *WorkerHub) Update(msg *worker.Index) {
+	if _, ok := wh.index[msg.Name]; ok && msg.Deleted {
+		delete(wh.index, msg.Name)
+		return
+	}
 	wh.index[msg.Name] = &worker.IndexItem{ModTime: msg.ModTime, Size: msg.Size}
 }
 
@@ -194,26 +199,22 @@ func (wh *WorkerHub) worker(tf *tail.Tail, channel string, out chan *worker.Mess
 }
 
 func (wh *WorkerHub) indexRun(out chan *worker.Index, unregister chan bool) {
-
-	ticker := time.NewTicker(time.Duration(wh.Config.ListCache) * time.Second)
-	defer func() {
-		ticker.Stop()
-	}()
-	last := time.Now()
 	wh.indexLoad(out, time.Time{})
 	wh.Log.Print("debug: indexer started")
-	for {
-		select {
-		case <-ticker.C:
-			now := time.Now()
-			wh.indexLoad(out, last)
-			last = now
 
-		case <-unregister:
-			wh.Log.Print("debug: indexer stopped")
-			return
-		}
+	notify := func(ev dirwatch.Event) {
+		wh.Log.Printf("debug: handling file event %v", ev)
+		wh.indexUpdateFile(out, ev.Name)
 	}
+
+	watcher := dirwatch.New(dirwatch.Notify(notify), dirwatch.Logger(wh.Log.Println))
+	defer watcher.Stop()
+
+	watcher.Add(wh.Config.Root, true)
+
+	<-unregister
+	wh.Log.Print("debug: indexer stopped")
+	return
 }
 
 func (wh *WorkerHub) indexLoad(out chan *worker.Index, lastmod time.Time) {
@@ -231,5 +232,25 @@ func (wh *WorkerHub) indexLoad(out chan *worker.Index, lastmod time.Time) {
 	if err != nil {
 		wh.Log.Printf("error: path walk %+v", err)
 	}
+}
 
+func (wh *WorkerHub) indexUpdateFile(out chan *worker.Index, path string) {
+	dir := strings.TrimSuffix(wh.Config.Root, "/")
+	p := strings.TrimPrefix(path, dir+"/")
+
+	f, err := os.Stat(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			if _, ok := wh.index[p]; ok {
+				wh.Log.Printf("debug: deleting file %s from index", p)
+				out <- &worker.Index{Name: p, Deleted: true}
+			}
+		} else {
+			wh.Log.Printf("error: cannot get stat for file %s with error %v", path, err)
+		}
+	}
+
+	if !f.IsDir() {
+		out <- &worker.Index{Name: p, ModTime: f.ModTime(), Size: f.Size()}
+	}
 }

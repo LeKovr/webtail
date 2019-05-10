@@ -8,10 +8,10 @@ import (
 	"os"
 	"runtime"
 
-	"github.com/fukata/golang-stats-api-handler"
+	stats_api "github.com/fukata/golang-stats-api-handler"
 
 	"github.com/LeKovr/go-base/log"
-	"github.com/elazarl/go-bindata-assetfs"
+	assetfs "github.com/elazarl/go-bindata-assetfs"
 	"github.com/jessevdk/go-flags"
 
 	"github.com/LeKovr/webtail/tailer"
