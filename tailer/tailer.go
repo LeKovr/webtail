@@ -170,8 +170,11 @@ func (wh *WorkerHub) Index() *worker.IndexStore {
 
 // Update updates item in index
 func (wh *WorkerHub) Update(msg *worker.Index) {
-	if _, ok := wh.index[msg.Name]; ok && msg.Deleted {
-		delete(wh.index, msg.Name)
+	if msg.Deleted {
+		if _, ok := wh.index[msg.Name]; ok {
+			wh.Log.Printf("debug: deleting file %s from index", msg.Name)
+			delete(wh.index, msg.Name)
+		}
 		return
 	}
 	wh.index[msg.Name] = &worker.IndexItem{ModTime: msg.ModTime, Size: msg.Size}
@@ -241,10 +244,7 @@ func (wh *WorkerHub) indexUpdateFile(out chan *worker.Index, path string) {
 	f, err := os.Stat(path)
 	if err != nil {
 		if os.IsNotExist(err) {
-			if _, ok := wh.index[p]; ok {
-				wh.Log.Printf("debug: deleting file %s from index", p)
-				out <- &worker.Index{Name: p, Deleted: true}
-			}
+			out <- &worker.Index{Name: p, Deleted: true}
 		} else {
 			wh.Log.Printf("error: cannot get stat for file %s with error %v", path, err)
 		}
