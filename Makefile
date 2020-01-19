@@ -10,6 +10,8 @@ GO            ?= go
 SOURCES        = worker/*.go tailer/*.go
 LIBS           = $(shell $(GO) list ./... | grep -vE '/(vendor|cmd)/')
 
+VERSION       ?= $(shell git describe --tags --always)
+
 OS            ?= linux
 ARCH          ?= amd64
 STAMP         ?= $$(date +%Y-%m-%d_%H:%M.%S)
@@ -28,11 +30,8 @@ DC_SERVICE    ?= app
 # Generated docker image
 DC_IMAGE      ?= webtail
 
-# docker/compose version
-DC_VER        ?= 1.14.0
-
-# golang image version
-GO_VER        ?= 1.9.2-alpine3.6
+# docker-compose image version
+DC_VER        ?= 1.23.2
 
 # docker app for change inside containers
 DOCKER_BIN    ?= docker
@@ -71,18 +70,16 @@ doc:
 
 ## Build cmds for scratch docker
 build-standalone: lint vet coverage
-	[ -d .git ] && GH=`git rev-parse HEAD` || GH=nogit ; \
-	  GOOS=linux CGO_ENABLED=0 $(GO) build -a -v -o $(PRG) -ldflags \
-	  "-X main.Build=$(STAMP) -X main.Commit=$$GH" ./cmd/$(PRG)
+	GOOS=linux CGO_ENABLED=0 $(GO) build -a -v -o $(PRG) -ldflags \
+	  "-X main.Build=$(STAMP) -X main.version=$(VERSION)" ./cmd/$(PRG)
 
 ## Build cmds
 build: gen $(PRG)
 
 ## Build webtail command
 $(PRG): cmd/webtail/*.go $(SOURCES)
-	[ -d .git ] && GH=`git rev-parse HEAD` || GH=nogit ; \
-	  GOOS=$(OS) GOARCH=$(ARCH) $(GO) build -v -o $@ -ldflags \
-	  "-X main.Build=$(STAMP) -X main.Commit=$$GH" ./cmd/$@
+	GOOS=$(OS) GOARCH=$(ARCH) $(GO) build -v -o $@ -ldflags \
+	  "-X main.Build=$(STAMP) -X main.version=$(VERSION)" ./cmd/$@
 
 ## Show coverage
 coverage:
@@ -102,32 +99,24 @@ lint:
 	golint worker/...
 	golint cmd/...
 
-## Format go sources
-fmt:
-	$(GO) fmt ./api/... && $(GO) fmt ./manager/... && $(GO) fmt ./cmd/...
+lint-more: ## Run linter
+	@golangci-lint run ./...
+
 
 ## Run vet
 vet:
 	$(GO) vet ./tailer/... && $(GO) vet ./worker/... && $(GO) vet ./cmd/...
 
-## Install vendor deps
-vendor:
-	@echo "*** $@:glide ***"
-	which glide > /dev/null || curl https://glide.sh/get | sh
-	@echo "*** $@ ***"
-	glide install
-
 # ------------------------------------------------------------------------------
 
 ## build app for all platforms
 buildall: lint vet
-	@echo "*** $@ ***"
-	@[ -d .git ] && GH=`git rev-parse HEAD` || GH=nogit ; \
+	@echo "*** $@ ***" ; \
 	  for a in "$(ALLARCH)" ; do \
 	    echo "** $${a%/*} $${a#*/}" ; \
 	    P=$(PRG)_$${a%/*}_$${a#*/} ; \
 	    GOOS=$${a%/*} GOARCH=$${a#*/} $(GO) build -o $$P -ldflags \
-	      "-X main.Build=$(STAMP) -X main.Commit=$$GH" ./cmd/$(PRG) ; \
+	      "-X main.Build=$(STAMP) -X main.version=$(VERSION)" ./cmd/$(PRG) ; \
 	  done
 
 ## create disro files
@@ -183,7 +172,6 @@ dc: docker-compose.yml
   -v /var/run/docker.sock:/var/run/docker.sock \
   -v $$PWD:$$PWD \
   -w $$PWD \
-  --env=golang_version=$(GO_VER) \
   --env=SERVER_PORT=$(SERVER_PORT) \
   --env=LOG_DIR=$(LOG_DIR) \
   --env=DC_IMAGE=$(DC_IMAGE) \

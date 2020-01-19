@@ -51,4 +51,4 @@ Starting from v0.30 this code is based on [gorilla/websocket chat example](https
 
 The MIT License (MIT), see [LICENSE](LICENSE).
 
-Copyright (c) 2016-2017 Alexey Kovrizhkin <lekovr+webtail@gmail.com>
+Copyright (c) 2016-2020 Alexey Kovrizhkin <lekovr+webtail@gmail.com>

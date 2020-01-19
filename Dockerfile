@@ -3,31 +3,27 @@
 # ARG golang_version
 # FROM golang:$golang_version
 
-FROM golang:1.9.2-alpine3.6
+FROM golang:1.13.5-alpine3.11 as builder
 
-MAINTAINER Alexey Kovrizhkin <lekovr+docker@gmail.com>
+WORKDIR /opt/app
+RUN apk --update add curl git make
 
-# alpine does not have these apps
-RUN apk add --no-cache make bash git curl
+# Cached layer
+COPY ./go.mod ./go.sum ./
+RUN go mod download
 
-WORKDIR /go/src/github.com/LeKovr/webtail
-COPY cmd cmd
-COPY html html
-COPY tailer tailer
-COPY worker worker
-COPY Makefile .
-COPY glide.* ./
+# Sources dependent layer
+COPY ./ ./
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags "-X main.version=`git describe --tags --always`" -a ./cmd/webtail/
 
-RUN go get -u github.com/golang/lint/golint
-RUN make vendor
-RUN make build-standalone
 
 FROM scratch
 
 VOLUME /data
 
 WORKDIR /
-COPY --from=0 /go/src/github.com/LeKovr/webtail/webtail .
+
+COPY --from=builder /opt/app/webtail .
 
 EXPOSE 8080
 ENTRYPOINT ["/webtail"]

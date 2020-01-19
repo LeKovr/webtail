@@ -5,7 +5,7 @@ services:
   app:
     image: ${DC_IMAGE}
     command:
-      /server --listen :8081 --log_level debug --root /data
+      --listen :8081 --log_level debug --root /data
     ports:
       - "${SERVER_PORT}:8081"
     volumes:
@@ -14,5 +14,3 @@ services:
       - ${LOG_DIR}:/data
     build:
       context: .
-      args:
-        - golang_version

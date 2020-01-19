@@ -87,7 +87,7 @@ func faviconIco() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "favicon.ico", size: 7406, mode: os.FileMode(420), modTime: time.Unix(1513587015, 0)}
+	info := bindataFileInfo{name: "favicon.ico", size: 7406, mode: os.FileMode(420), modTime: time.Unix(1561759140, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -107,7 +107,7 @@ func indexHtml() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "index.html", size: 1433, mode: os.FileMode(436), modTime: time.Unix(1513714407, 0)}
+	info := bindataFileInfo{name: "index.html", size: 1433, mode: os.FileMode(420), modTime: time.Unix(1561759140, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -127,7 +127,7 @@ func jquery214MinJs() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "jquery-2.1.4.min.js", size: 84345, mode: os.FileMode(436), modTime: time.Unix(1467703034, 0)}
+	info := bindataFileInfo{name: "jquery-2.1.4.min.js", size: 84345, mode: os.FileMode(420), modTime: time.Unix(1561759140, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -147,7 +147,7 @@ func webtailCss() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "webtail.css", size: 788, mode: os.FileMode(436), modTime: time.Unix(1513555360, 0)}
+	info := bindataFileInfo{name: "webtail.css", size: 788, mode: os.FileMode(420), modTime: time.Unix(1561759140, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -167,7 +167,7 @@ func webtailJs() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "webtail.js", size: 8305, mode: os.FileMode(436), modTime: time.Unix(1519210991, 0)}
+	info := bindataFileInfo{name: "webtail.js", size: 8305, mode: os.FileMode(420), modTime: time.Unix(1561759140, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
