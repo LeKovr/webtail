@@ -13,8 +13,12 @@ th, td {
 }
 
 .bottom {
-  text-align:right;
+  background: #f2f2f2;
   font-size: 9pt;
+  position: fixed;
+  bottom:0;
+  left: 0;
+  right:0;
 }
 
 .hide {
@@ -30,6 +34,7 @@ th, td {
   width: 95vw;
   font-family: monospace;
   padding-top:38px;
+  padding-bottom:12px;
 }
 
 .top {
@@ -37,13 +42,15 @@ th, td {
   position:fixed;
   width:100%;
   top:0px;
+  left: 0;
+  background: #f2f2f2;
+  padding-bottom:2px;
+  padding-left:10px;
 }
 .right {
   float: right;
   text-align: right;
   padding-right: 20px;
-  width: 200px;
-  height: 34px;
   font-color: #888;
   background: #f2f2f2;
   padding-top: 4px;
@@ -54,11 +61,17 @@ th, td {
 }
 
 .left {
-  height: 38px;
+  display: inline-block;
+  padding-top:2px;
+  padding-left:4px;
   overflow: hidden;
   background: #f2f2f2;
 }
 
 h4 {
-  margin: 6px;
+  margin: 3px;
+}
+
+form {
+  display: inline-block;
 }

@@ -44,7 +44,7 @@ Starting from v0.30 this code is based on [gorilla/websocket chat example](https
 * [x] js: don't enable "follow" button on big update
 * [x] go: use https://github.com/hpcloud/tail instead https://github.com/LeKovr/tail
 * [x] js: reconnect ws on close
-* [ ] js: add inputs for filter plain/green/yellow/red
+* [x] js: add mask for row coloring
 * [ ] add text field for server-side log filtering
 
 ## License

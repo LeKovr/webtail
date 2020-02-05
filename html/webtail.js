@@ -132,9 +132,10 @@ function showPage() {
     $('#tail-data').text('');
     if (!$('#index').hasClass('hide')) {
       $('#index').addClass('hide');
-  }
-  $('#src').removeClass('hide');
-
+    }
+    let searchParams = new URLSearchParams(window.location.search)
+    $('#mask').val(searchParams.get('mask'))
+    $('#src').removeClass('hide');
     tail(location.hash.replace(/^#/,""));
   }
 }
@@ -202,7 +203,20 @@ function connect() {
           console.log(JSON.stringify(m.data, null, 4))
         } else if (m.type == 'log') {
           var $area = $('#tail-data');
-          $area.append(document.createTextNode((m.data != undefined)?m.data:''));
+          var str = (m.data != undefined)?m.data:'';
+          var mask = $('#mask').val();
+          var container;
+          if ( mask == '') {
+            container = document.createTextNode(str)
+          } else {
+            container = document.createElement("span");
+            var text = document.createTextNode(str);
+            container.appendChild(text);
+            if (str.search($('#mask').val()) != -1) {
+              container.style.color = "red";
+            }
+          }
+          $area.append(container); ;
           $area.append("<br />");
           if (!WebTail.focused) {
             titleUnread(++WebTail.unread);
@@ -225,10 +239,22 @@ function connect() {
   }
 }
 
+// code from https://dev.opera.com/articles/fixing-the-scrolltop-bug/
+function bodyOrHtml() {
+    if ('scrollingElement' in document) {
+	return document.scrollingElement;
+    }
+    // Fallback for legacy browsers
+    if (navigator.userAgent.indexOf('WebKit') != -1) {
+	return document.body;
+    }
+    return document.documentElement;
+}
 // scroll window to bottom
 function updateScroll(){
   if(!WebTail.scrolled){
-    window.scrollTo(0,document.body.scrollHeight);
+    var obj = bodyOrHtml();
+    obj.scrollTop = obj.scrollHeight;
   }
   WebTail.wait = false;
 }
@@ -240,12 +266,16 @@ $(function() {
   titleReset();
 
   $('#flag').click(function() {
-    window.scrollTo(0,document.body.scrollHeight);
+    var obj = bodyOrHtml();
+    obj.scrollTop = obj.scrollHeight;
   });
 });
 
 $(window).scroll(function() {
-  if ($(window).scrollTop() + $(window).height() >= $(document).height()) {
+    var scrollHeight, totalHeight;
+    scrollHeight = document.body.scrollHeight;
+    totalHeight = window.scrollY + window.innerHeight;
+    if(totalHeight >= scrollHeight) {
      WebTail.scrolled = false; // user scrolled to bottom
      $('#flag').prop("disabled", true);
   } else if (!WebTail.wait) {
