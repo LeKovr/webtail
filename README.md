@@ -14,8 +14,9 @@ webtail
 
 This service loads list of logfiles from directory tree & continuously shows result of chosen file tail via websocket.
 
-WARNING: Current version of this project is not intended for production use. This is proof-of-concept.
-Tests, docs and more than 1 committer is required for getting this project production-ready.
+Project status: MVP
+
+![Ping stream sample](webtail-ping.png)
 
 ## Install
 
@@ -45,6 +46,7 @@ Starting from v0.30 this code is based on [gorilla/websocket chat example](https
 * [x] go: use https://github.com/hpcloud/tail instead https://github.com/LeKovr/tail
 * [x] js: reconnect ws on close
 * [x] js: add mask for row coloring
+* [ ] add tests & more docs
 * [ ] add text field for server-side log filtering
 
 ## License
