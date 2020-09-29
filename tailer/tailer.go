@@ -9,7 +9,7 @@ import (
 
 	"github.com/LeKovr/go-base/log"
 	"github.com/dc0d/dirwatch"
-	"github.com/hpcloud/tail"
+	"github.com/nxadm/tail"
 
 	"github.com/LeKovr/webtail/worker"
 )
