@@ -1,9 +1,9 @@
 module github.com/LeKovr/webtail
 
-go 1.13
+go 1.15
 
 require (
-	github.com/LeKovr/go-base v0.0.0-20171028213907-e2d8736bc813
+	github.com/LeKovr/go-base v1.0.1
 	github.com/comail/colog v0.0.0-20160416085026-fba8e7b1f46c
 	github.com/dc0d/dirwatch v0.4.3
 	github.com/dc0d/retry v1.2.0 // indirect

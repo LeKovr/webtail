@@ -1,5 +1,5 @@
-github.com/LeKovr/go-base v0.0.0-20171028213907-e2d8736bc813 h1:93Ccc6bHhOqpf7eyJespL738/od01KaR4AVGzgJxIRE=
-github.com/LeKovr/go-base v0.0.0-20171028213907-e2d8736bc813/go.mod h1:j/QWsrvOBBQm6Nh6nXciPsyEevORNF1N2CWvbjl1wqQ=
+github.com/LeKovr/go-base v1.0.1 h1:ShD7rgFZxqSV0QNaOxddqO6CWOgOfdpFS5+QsI5MBBU=
+github.com/LeKovr/go-base v1.0.1/go.mod h1:yOCtmK45QfFMLuTnzLf6purXdlcWfrs7YDRMwm0UOQE=
 github.com/comail/colog v0.0.0-20160416085026-fba8e7b1f46c h1:bzYQ6WpR+t35/y19HUkolcg7SYeWZ15IclC9Z4naGHI=
 github.com/comail/colog v0.0.0-20160416085026-fba8e7b1f46c/go.mod h1:1WwgAwMKQLYG5I2FBhpVx94YTOAuB2W59IZ7REjSE6Y=
 github.com/davecgh/go-spew v1.1.0 h1:ZDRjVQ15GmhC3fiQ8ni8+OwkZQO4DARzQgrnXU1Liz8=
