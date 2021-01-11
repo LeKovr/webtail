@@ -67,7 +67,11 @@ function showFiles(file) {
     }
     var item = $('*[data-file="'+file.name+'"]');
 
-    if (item.length == 0) {
+    if (item.length == 0 && f.deleted) {
+      return;
+    } else if (f.deleted) {
+      item.remove()
+    } else if (item.length == 0) {
       row.before(p);
     } else {
       item.replaceWith(p);
@@ -80,7 +84,6 @@ function showFiles(file) {
     if (f.size > 0) p.find('[rel="link"]').attr("href", '#' + f.name);
     p.find('[rel="link"]').text(name);
     p.removeClass('hide');
-   
 }
 
 function titleReset() {

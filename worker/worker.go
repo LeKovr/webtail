@@ -41,7 +41,8 @@ type Index struct {
 	ModTime time.Time `json:"mtime"`
 	Size    int64     `json:"size"`
 	//	IndexItem
-	Name string `json:"name"`
+	Name    string `json:"name"`
+	Deleted bool   `json:"deleted"`
 }
 
 // IndexStore holds all index items
