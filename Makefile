@@ -60,6 +60,9 @@ all: help
 run: build
 	./$(PRG) --log_level debug --root log/ --html html --trace
 
+run-abs: build
+	./$(PRG) --log_level debug --root $$PWD/log/ --html html --trace
+
 ## Generate protobuf & kvstore mock
 gen:
 	$(GO) generate ./cmd/webtail/...

@@ -50,6 +50,13 @@ func New(logger log.Logger, cfg Config) (*WorkerHub, error) {
 	if err != nil {
 		return nil, err
 	}
+	aPath, err := filepath.Abs(cfg.Root)
+	if err != nil {
+		return nil, err
+	}
+	if aPath != cfg.Root {
+		cfg.Root = aPath
+	}
 	return &WorkerHub{
 		Config: cfg,
 		Log:    logger,
