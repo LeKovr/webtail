@@ -1,4 +1,4 @@
-package main
+package webtail
 
 import (
 	"encoding/json"

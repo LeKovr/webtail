@@ -13,6 +13,6 @@ import (
 var version = "0.0-dev"
 
 func main() {
-	log.Printf("webtail %s. WebTail, tail logfiles via web", version)
+	log.Printf("WebTail %s. Tail (log)files via web", version)
 	run(os.Exit)
 }

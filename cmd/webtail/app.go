@@ -4,12 +4,19 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/LeKovr/webtail/tailer"
 	assetfs "github.com/elazarl/go-bindata-assetfs"
 	stats_api "github.com/fukata/golang-stats-api-handler"
+
+	"github.com/LeKovr/webtail"
 )
 
-// run app and exist via given exitFunc
+// Config holds all config vars
+type Config struct {
+	Flags
+	Tail webtail.Config `group:"Webtail Options"`
+}
+
+// run app and exit via given exitFunc
 func run(exitFunc func(code int)) {
 
 	var err error
@@ -20,13 +27,13 @@ func run(exitFunc func(code int)) {
 		return
 	}
 	lg := setupLog(cfg.LogLevel == "debug" || cfg.Debug)
-	var tail *tailer.WorkerHub
-	tail, err = tailer.New(lg, cfg.Tail)
+
+	var wt *webtail.Service
+	wt, err = webtail.New(lg, cfg.Tail)
 	if err != nil {
 		return
 	}
-	hub := newHub(lg, tail)
-	go hub.run()
+	go wt.Run()
 
 	if cfg.HTML != "" {
 		http.Handle("/", http.FileServer(http.Dir(cfg.HTML)))
@@ -34,7 +41,7 @@ func run(exitFunc func(code int)) {
 		http.Handle("/", http.FileServer(&assetfs.AssetFS{Asset: Asset, AssetDir: AssetDir, AssetInfo: AssetInfo}))
 	}
 	http.HandleFunc("/tail", func(w http.ResponseWriter, r *http.Request) {
-		serveWs(hub, w, r)
+		wt.Handle(w, r)
 	})
 	http.HandleFunc("/api/stats", stats_api.Handler)
 	lg.Print("Listen: ", cfg.Listen)

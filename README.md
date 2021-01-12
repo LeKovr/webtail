@@ -1,6 +1,4 @@
-
-webtail
-=======
+# webtail
 
 [![GoCard][1]][2]
 [![GitHub license][3]][4]
@@ -20,7 +18,7 @@ Project status: MVP
 
 ## Install
 
-```
+```bash
 go get github.com/LeKovr/webtail
 ```
 
@@ -36,15 +34,34 @@ docker pull lekovr/webtail
 
 See [docker-compose.yml](docker-compose.yml) for usage example.
 
+## Embed package in your service
+
+```go
+package main
+import (
+    "github.com/LeKovr/webtail"
+)
+
+func main() {
+	var wt *webtail.Service
+	wt, err = webtail.New(log, cfg.WebTail)
+	if err != nil {
+		return
+	}
+	go wt.Run()
+    ...
+	http.HandleFunc("/tail", func(w http.ResponseWriter, r *http.Request) {
+		wt.Handle(w, r)
+    })
+}
+```
+
 ## Note about gorilla/websocket
 
 Starting from v0.30 this code is based on [gorilla/websocket chat example](https://github.com/gorilla/websocket/tree/master/examples/chat). See cmd/webtail/{client,hub}.go
 
 ## TODO
 
-* [x] js: don't enable "follow" button on big update
-* [x] go: use https://github.com/hpcloud/tail instead https://github.com/LeKovr/tail
-* [x] js: reconnect ws on close
 * [x] js: add mask for row coloring
 * [ ] add tests & more docs
 * [ ] add text field for server-side log filtering
@@ -53,4 +70,4 @@ Starting from v0.30 this code is based on [gorilla/websocket chat example](https
 
 The MIT License (MIT), see [LICENSE](LICENSE).
 
-Copyright (c) 2016-2020 Alexey Kovrizhkin <lekovr+webtail@gmail.com>
+Copyright (c) 2016-2021 Aleksey Kovrizhkin <lekovr+webtail@gmail.com>

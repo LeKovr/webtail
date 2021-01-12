@@ -10,8 +10,6 @@ import (
 	"github.com/LeKovr/go-base/log"
 	"github.com/comail/colog"
 	"github.com/jessevdk/go-flags"
-
-	"github.com/LeKovr/webtail/tailer"
 )
 
 // -----------------------------------------------------------------------------
@@ -23,12 +21,6 @@ type Flags struct {
 	Version  bool   `long:"version"                       description:"Show version and exit"`
 	LogLevel string `long:"log_level"   default:"info"    description:"Log level [info|debug] (deprecated, see --debug)"`
 	Debug    bool   `long:"debug"       description:"Show debug data"`
-}
-
-// Config holds all config vars
-type Config struct {
-	Flags
-	Tail tailer.Config `group:"Tail Options"`
 }
 
 var (
