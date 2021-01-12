@@ -1,3 +1,4 @@
 .env*
 coverage.out
-logbase
+webtail
+cmd/webtail/bindata_assetfs.go

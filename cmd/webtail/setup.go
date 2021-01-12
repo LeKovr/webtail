@@ -1,4 +1,4 @@
-//go:generate go-bindata -pkg $GOPACKAGE -prefix ../../html -o bindata.go ../../html/
+//go:generate go-bindata-assetfs -pkg $GOPACKAGE -prefix ../../html ../../html/
 
 package main
 

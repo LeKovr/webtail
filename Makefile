@@ -31,7 +31,7 @@ DC_SERVICE    ?= app
 DC_IMAGE      ?= webtail
 
 # docker-compose image version
-DC_VER        ?= 1.23.2
+DC_VER        ?= latest
 
 # docker app for change inside containers
 DOCKER_BIN    ?= docker
@@ -63,7 +63,7 @@ run: build
 run-abs: build
 	./$(PRG) --log_level debug --root $$PWD/log/ --html html --trace
 
-## Generate protobuf & kvstore mock
+## Generate embedded html/
 gen:
 	$(GO) generate ./cmd/webtail/...
 

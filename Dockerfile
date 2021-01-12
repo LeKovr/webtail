@@ -1,21 +1,24 @@
 
-# cloud.docker.com do not use ARG, we do now use hooks
+# cloud.docker.com does not use ARG, so golang_version must be hardcoded
 # ARG golang_version
 # FROM golang:$golang_version
 
-FROM golang:1.13.5-alpine3.11 as builder
+FROM golang:1.15.5-alpine3.12 as builder
 
 WORKDIR /opt/app
-RUN apk --update add curl git make
+# Used in `git describe`
+RUN apk --update add git
 
 # Cached layer
 COPY ./go.mod ./go.sum ./
 RUN go mod download
+RUN go get github.com/go-bindata/go-bindata/...
+RUN go get github.com/elazarl/go-bindata-assetfs/...
 
 # Sources dependent layer
 COPY ./ ./
+RUN go generate ./cmd/webtail/...
 RUN CGO_ENABLED=0 GOOS=linux go build -ldflags "-X main.version=`git describe --tags --always`" -a ./cmd/webtail/
-
 
 FROM scratch
 
