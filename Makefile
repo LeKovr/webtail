@@ -1,4 +1,6 @@
-# exam project makefile
+## webtail Makefile:
+## Tail [log]files via web
+#:
 
 SHELL          = /bin/bash
 
@@ -7,14 +9,15 @@ SHELL          = /bin/bash
 
 GO            ?= go
 # not supported in BusyBox v1.26.2
-SOURCES        = worker/*.go tailer/*.go
-LIBS           = $(shell $(GO) list ./... | grep -vE '/(vendor|cmd)/')
+SOURCES        = worker/*.go *.go
 
-VERSION       ?= $(shell git describe --tags --always)
+BUILD_DATE    ?= $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
+VCS_REF       ?= $(shell git rev-parse --short HEAD)
+APP_VERSION   ?= $(shell git describe --tags --always)
+GOLANG_VERSION = 1.15.5-alpine3.12
 
 OS            ?= linux
 ARCH          ?= amd64
-STAMP         ?= $$(date +%Y-%m-%d_%H:%M.%S)
 ALLARCH       ?= "linux/amd64 linux/386 darwin/386"
 DIRDIST       ?= dist
 
@@ -49,12 +52,46 @@ SERVER_PORT   ?= 8080
 
 .PHONY: all doc gen build-standalone coverage cov-html build test lint fmt vet vendor up down build-docker clean-docker
 
-##
-## Available targets are:
-##
-
 # default: show target list
 all: help
+
+# ------------------------------------------------------------------------------
+## Compile operations
+#:
+
+## Generate embedded html/
+gen:
+	$(GO) generate ./cmd/webtail/...
+
+## Run lint
+lint:
+	@golint ./...
+	@golangci-lint run ./...
+
+## Run vet
+vet:
+	$(GO) vet ./...
+
+## Run tests
+test: gen
+	$(GO) test -coverprofile=coverage.out ./...
+
+## Show package coverage in html (make cov-html PKG=counter)
+cov-html:
+	$(GO) tool cover -html=coverage.out
+
+## Build app
+build: gen $(PRG)
+
+## Build webtail command
+$(PRG): cmd/webtail/*.go $(SOURCES)
+	GOOS=$(OS) GOARCH=$(ARCH) $(GO) build -v -o $@ -ldflags \
+	  "-X main.built=$(BUILD_DATE) -X main.version=$(APP_VERSION)" ./cmd/$@
+
+## Build like docker image from scratch
+build-standalone: lint vet test
+	GOOS=linux CGO_ENABLED=0 $(GO) build -a -v -o $(PRG) -ldflags \
+	  "-X main.built=$(BUILD_DATE) -X main.version=$(APP_VERSION)" ./cmd/$(PRG)
 
 ## build and run in foreground
 run: build
@@ -63,54 +100,13 @@ run: build
 run-abs: build
 	./$(PRG) --log_level debug --root $$PWD/log/ --html html --trace
 
-## Generate embedded html/
-gen:
-	$(GO) generate ./cmd/webtail/...
-
 doc:
 	@echo "Open http://localhost:6060/pkg/LeKovr/webtail"
 	@godoc -http=:6060
 
-## Build cmds for scratch docker
-build-standalone: lint vet coverage
-	GOOS=linux CGO_ENABLED=0 $(GO) build -a -v -o $(PRG) -ldflags \
-	  "-X main.Build=$(STAMP) -X main.version=$(VERSION)" ./cmd/$(PRG)
-
-## Build cmds
-build: gen $(PRG)
-
-## Build webtail command
-$(PRG): cmd/webtail/*.go $(SOURCES)
-	GOOS=$(OS) GOARCH=$(ARCH) $(GO) build -v -o $@ -ldflags \
-	  "-X main.Build=$(STAMP) -X main.version=$(VERSION)" ./cmd/$@
-
-## Show coverage
-coverage:
-	@for f in $(LIBS) ; do pushd $$GOPATH/src/$$f > /dev/null ; $(GO) test -coverprofile=coverage.out ; popd > /dev/null ; done
-
-## Show package coverage in html (make cov-html PKG=counter)
-cov-html:
-	$(GO) tool cover -html=coverage.out
-
-## Run tests
-test:
-	$(GO) test $(LIBS)
-
-## Run lint
-lint:
-	golint tailer/...
-	golint worker/...
-	golint cmd/...
-
-lint-more: ## Run linter
-	@golangci-lint run ./...
-
-
-## Run vet
-vet:
-	$(GO) vet ./tailer/... && $(GO) vet ./worker/... && $(GO) vet ./cmd/...
-
 # ------------------------------------------------------------------------------
+## Prepare distros
+#:
 
 ## build app for all platforms
 buildall: lint vet
@@ -119,7 +115,7 @@ buildall: lint vet
 	    echo "** $${a%/*} $${a#*/}" ; \
 	    P=$(PRG)_$${a%/*}_$${a#*/} ; \
 	    GOOS=$${a%/*} GOARCH=$${a#*/} $(GO) build -o $$P -ldflags \
-	      "-X main.Build=$(STAMP) -X main.version=$(VERSION)" ./cmd/$(PRG) ; \
+	      "-X main.built=$(BUILD_DATE) -X main.version=$(APP_VERSION)" ./cmd/$(PRG) ; \
 	  done
 
 ## create disro files
@@ -144,44 +140,56 @@ clean:
 	@[ -f $(PRG) ] && rm -f $(PRG) || true
 
 # ------------------------------------------------------------------------------
-# Docker part
-# ------------------------------------------------------------------------------
+## Docker operations
+#:
 
 ## Start service in container
 up:
-up: CMD=up -d $(DC_SERVICE)
+up: CMD="up -d $(DC_SERVICE)"
 up: dc
 
 ## Stop service
 down:
-down: CMD=rm -f -s $(DC_SERVICE)
+down: CMD="rm -f -s $(DC_SERVICE)"
 down: dc
 
 ## Build docker image
-build-docker:
-	@$(MAKE) -s dc CMD="build --no-cache --force-rm $(DC_SERVICE)"
+build-docker: CMD="build --no-cache --force-rm $(DC_SERVICE)"
+build-docker: dc
 
-# Remove docker image & temp files
+## Remove docker image & temp files
 clean-docker:
 	[[ "$$($(DOCKER_BIN) images -q $(DC_IMAGE) 2> /dev/null)" == "" ]] || $(DOCKER_BIN) rmi $(DC_IMAGE)
 
 # ------------------------------------------------------------------------------
 
-# $$PWD используется для того, чтобы текущий каталог был доступен в контейнере по тому же пути
-# и относительные тома новых контейнеров могли его использовать
-## run docker-compose
+# $$PWD usage allows host directory mounts in child containers
+# Thish works if path is the same for host, docker, docker-compose and child container
+## run $(CMD) via docker-compose
 dc: docker-compose.yml
 	@$(DOCKER_BIN) run --rm  -i \
   -v /var/run/docker.sock:/var/run/docker.sock \
-  -v $$PWD:$$PWD \
-  -w $$PWD \
+  -v $$PWD:$$PWD -w $$PWD \
   --env=SERVER_PORT=$(SERVER_PORT) \
   --env=LOG_DIR=$(LOG_DIR) \
   --env=DC_IMAGE=$(DC_IMAGE) \
+  --env=BUILD_DATE=$(BUILD_DATE) \
+  --env=VCS_REF=$(VCS_REF) \
+  --env=APP_VERSION=$(APP_VERSION) \
+  --env=GOLANG_VERSION=$(GOLANG_VERSION) \
   docker/compose:$(DC_VER) \
   -p $(PRG) \
-  $(CMD)
+  "$(CMD)"
 
-## Show available make targets
+# ------------------------------------------------------------------------------
+## Other
+#:
+
+# This code handles group header and target comment with one or two lines only
+## list Makefile targets
+## (this is default target)
 help:
-	@grep -A 1 "^##" Makefile | less
+	@grep -A 1 -h "^## " $(MAKEFILE_LIST) \
+  | sed -E 's/^--$$// ; /./{H;$$!d} ; x ; s/^\n## ([^\n]+)\n(## (.+)\n)*(.+):(.*)$$/"    " "\4" "\1" "\3"/' \
+  | sed -E 's/^"    " "#" "(.+)" "(.*)"$$/"" "" "" ""\n"\1 \2" "" "" ""/' \
+  | xargs printf "%s\033[36m%-15s\033[0m %s %s\n"

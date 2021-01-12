@@ -1,12 +1,27 @@
 # webtail
 
-[![GoCard][1]][2]
-[![GitHub license][3]][4]
+[![Go Reference][ref1]][ref2]
+ [![codecov][cc1]][cc2]
+ [![GoCard][gc1]][gc2]
+ [![Build Status][bs1]][bs2]
+ [![GitHub Release][gr1]][gr2]
+ [![Docker Image][di1]][di2]
+ [![GitHub license][gl1]][gl2]
 
-[1]: https://goreportcard.com/badge/LeKovr/webtail
-[2]: https://goreportcard.com/report/github.com/LeKovr/webtail
-[3]: https://img.shields.io/badge/license-MIT-blue.svg
-[4]: LICENSE
+[ref1]: https://pkg.go.dev/badge/github.com/LeKovr/webtail.svg
+[ref2]: https://pkg.go.dev/github.com/LeKovr/webtail
+[cc1]: https://codecov.io/gh/LeKovr/webtail/branch/master/graph/badge.svg
+[cc2]: https://codecov.io/gh/LeKovr/webtail
+[gc1]: https://goreportcard.com/badge/github.com/LeKovr/webtail
+[gc2]: https://goreportcard.com/report/github.com/LeKovr/webtail
+[bs1]: https://cloud.drone.io/api/badges/LeKovr/webtail/status.svg
+[bs2]: https://cloud.drone.io/LeKovr/webtail
+[gr1]: https://img.shields.io/github/release/LeKovr/webtail.svg
+[gr2]: https://github.com/LeKovr/webtail/releases
+[di1]: https://images.microbadger.com/badges/image/lekovr/webtail.svg
+[di2]: https://microbadger.com/images/lekovr/webtail
+[gl1]: https://img.shields.io/github/license/LeKovr/webtail.svg
+[gl2]: https://github.com/LeKovr/webtail/blob/master/LICENSE
 
 [webtail](https://github.com/LeKovr/webtail) - Tail [log]files via websocket
 

@@ -1,0 +1,14 @@
+kind: pipeline
+name: default
+
+steps:
+  - name: testing
+    image: golang:1.15.5
+    pull: true
+    commands:
+      - go test -coverprofile=coverage.out -covermode=atomic ./...
+      - go vet ./...
+      - curl -s https://codecov.io/bash | bash
+    environment:
+      CODECOV_TOKEN:
+        from_secret: my-codecov-token

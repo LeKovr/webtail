@@ -14,3 +14,8 @@ services:
       - ${LOG_DIR}:/data
     build:
       context: .
+      args:
+        - BUILD_DATE
+        - VCS_REF
+        - APP_VERSION
+        - GOLANG_VERSION
