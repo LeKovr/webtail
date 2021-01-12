@@ -20,9 +20,9 @@ type Config struct {
 	Bytes       int64  `long:"bytes" default:"5000"  description:"tail from the last Nth location"`
 	Lines       int    `long:"lines" default:"100"   description:"keep N old lines for new consumers"`
 	MaxLineSize int    `long:"split" default:"180"   description:"split line if longer"`
+	ListCache   int    `long:"cache" default:"2"     description:"Time to cache file listing (sec)"`
 	Poll        bool   `long:"poll"  description:"use polling, instead of inotify"`
 	Trace       bool   `long:"trace" description:"trace worker channels"`
-	ListCache   int    `long:"cache"       default:"2"       description:"Time to cache file listing (sec)"`
 }
 
 type tailer struct {
