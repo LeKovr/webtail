@@ -90,7 +90,7 @@ coverage:
 
 ## Show package coverage in html (make cov-html PKG=counter)
 cov-html:
-	pushd $(PKG) ; $(GO) tool cover -html=coverage.out ; popd
+	$(GO) tool cover -html=coverage.out
 
 ## Run tests
 test:

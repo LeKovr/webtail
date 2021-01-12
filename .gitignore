@@ -2,6 +2,7 @@ dist
 webtail
 !cmd/webtail
 cmd/webtail/bindata_assetfs.go
+coverage.out
 log
 var
 vendor

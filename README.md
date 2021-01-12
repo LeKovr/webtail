@@ -18,7 +18,7 @@ Project status: MVP
 
 ## Install
 
-```bash
+```sh
 go get github.com/LeKovr/webtail
 ```
 
@@ -28,7 +28,7 @@ See [Latest release](https://github.com/LeKovr/webtail/releases/latest)
 
 ### Docker
 
-```
+```sh
 docker pull lekovr/webtail
 ```
 
@@ -43,15 +43,15 @@ import (
 )
 
 func main() {
-	var wt *webtail.Service
-	wt, err = webtail.New(log, cfg.WebTail)
-	if err != nil {
-		return
-	}
-	go wt.Run()
-    ...
-	http.HandleFunc("/tail", func(w http.ResponseWriter, r *http.Request) {
-		wt.Handle(w, r)
+    var wt *webtail.Service
+    wt, err = webtail.New(log, cfg.WebTail)
+    if err != nil {
+        return
+    }
+    go wt.Run()
+    // ...
+    http.HandleFunc("/tail", func(w http.ResponseWriter, r *http.Request) {
+        wt.Handle(w, r)
     })
 }
 ```
