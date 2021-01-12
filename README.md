@@ -1,6 +1,7 @@
 # webtail
 
 [![Go Reference][ref1]][ref2]
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2FLeKovr%2Fwebtail.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2FLeKovr%2Fwebtail?ref=badge_shield)
  [![codecov][cc1]][cc2]
  [![GoCard][gc1]][gc2]
  [![Build Status][bs1]][bs2]
@@ -30,6 +31,9 @@ This service loads list of logfiles from directory tree & continuously shows res
 Project status: MVP
 
 ![Ping stream sample](webtail-ping.png)
+
+
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2FLeKovr%2Fwebtail.svg?type=large)](https://app.fossa.com/projects/git%2Bgithub.com%2FLeKovr%2Fwebtail?ref=badge_large)
 
 ## Install
 
