@@ -30,7 +30,8 @@ LABEL maintainer="lekovr+webtail@gmail.com" \
       org.label-schema.build-date=$BUILD_DATE \
       org.label-schema.vcs-url="https://github.com/LeKovr/webtail.git" \
       org.label-schema.vcs-ref=$VCS_REF \
-      org.label-schema.schema-version="1.0"
+      org.label-schema.schema-version="1.0" \
+      org.opencontainers.image.source=https://github.com/LeKovr/webtail
 
 VOLUME /data
 WORKDIR /

@@ -1,0 +1,44 @@
+name: docker
+
+on:
+  push:
+    branches:
+      - master
+#    tags:
+#      - 'v*.*.*'
+
+jobs:
+  deploy:
+    name: Build Docker
+    runs-on: ubuntu-latest
+    env:
+      REGISTRY: ghcr.io
+      IMAGE_NAME: ${{ env.REGISTRY }}/${{ github.repository }}
+      IMAGE_TAG: ${{ github.ref }}
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+
+#    - name: Add make
+#      run: apt-get -y install make
+
+    - name: Build
+      run: make docker-build
+
+    - name: Login to GitHub Packages
+      env:
+        TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        docker login ghcr.io -u $GITHUB_ACTOR -p $TOKEN
+
+    - name: Push image to GitHub Packages
+      run: |
+        echo $IMAGE_NAME:$IMAGE_TAG
+#        docker push $IMAGE_NAME-builder-stage:latest
+#        docker push $IMAGE_NAME:latest
+#        docker push $IMAGE_NAME:$IMAGE_TAG
+
+    - name: Logout
+      run: |
+        docker logout ${{ env.REGISTRY }}
