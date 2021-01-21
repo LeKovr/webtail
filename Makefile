@@ -2,7 +2,7 @@
 ## Tail [log]files via web
 #:
 
-SHELL          = /bin/bash
+SHELL          = /bin/sh
 
 # -----------------------------------------------------------------------------
 # Build config
@@ -159,7 +159,7 @@ docker-build: dc
 
 ## Remove docker image & temp files
 docker-clean:
-	[[ "$$($(DOCKER_BIN) images -q $(DC_IMAGE) 2> /dev/null)" == "" ]] || $(DOCKER_BIN) rmi $(DC_IMAGE)
+	[ "$$($(DOCKER_BIN) images -q $(DC_IMAGE) 2> /dev/null)" = "" ] || $(DOCKER_BIN) rmi $(DC_IMAGE)
 
 # ------------------------------------------------------------------------------
 
@@ -173,8 +173,6 @@ dc: docker-compose.yml
   --env=SERVER_PORT=$(SERVER_PORT) \
   --env=LOG_DIR=$(LOG_DIR) \
   --env=DC_IMAGE=$(DC_IMAGE) \
-  --env=BUILD_DATE=$(BUILD_DATE) \
-  --env=VCS_REF=$(VCS_REF) \
   --env=APP_VERSION=$(APP_VERSION) \
   --env=GOLANG_VERSION=$(GOLANG_VERSION) \
   docker/compose:$(DC_VER) \

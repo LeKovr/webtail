@@ -6,7 +6,6 @@
  [![GoCard][gc1]][gc2]
  [![Build Status][bs1]][bs2]
  [![GitHub Release][gr1]][gr2]
- [![Docker Image][di1]][di2]
  [![GitHub license][gl1]][gl2]
 
 [ref1]: https://pkg.go.dev/badge/github.com/LeKovr/webtail.svg
@@ -19,8 +18,6 @@
 [bs2]: https://cloud.drone.io/LeKovr/webtail
 [gr1]: https://img.shields.io/github/release/LeKovr/webtail.svg
 [gr2]: https://github.com/LeKovr/webtail/releases
-[di1]: https://images.microbadger.com/badges/image/lekovr/webtail.svg
-[di2]: https://microbadger.com/images/lekovr/webtail
 [gl1]: https://img.shields.io/github/license/LeKovr/webtail.svg
 [gl2]: https://github.com/LeKovr/webtail/blob/master/LICENSE
 
@@ -47,8 +44,12 @@ See [Latest release](https://github.com/LeKovr/webtail/releases/latest)
 
 ### Docker
 
+v0.43.1 is the [last version available at dockerhub](https://hub.docker.com/repository/docker/lekovr/webtail/tags).
+
+Starting from 0.43.2 docker images are published at ghcr.io, so use
+
 ```sh
-docker pull lekovr/webtail
+docker pull ghcr.io/lekovr/webtail:latest
 ```
 
 See [docker-compose.yml](docker-compose.yml) for usage example.

@@ -23,8 +23,19 @@ name: docker
 
 steps:
   - name: build
-    image: docker/compose
-    commands:
-      - apk add --no-cache curl git make jq
-      - make docker-build
-      - docker images
+    image: plugins/docker
+    environment:
+      DOCKER_PASSWORD:
+        from_secret: my-docker-token
+      DOCKER_REGISTRY: https://ghcr.io
+      DOCKER_USERNAME: ${DRONE_REPO_OWNER}
+      PLUGIN_TAGS: ${DRONE_SEMVER},latest
+      PLUGIN_REPO: ghcr.io/lekovr/${DRONE_REPO_NAME}
+      PLUGIN_CUSTOM_LABELS: org.opencontainers.image.source=${DRONE_REPO_LINK}
+      PLUGIN_LABEL_SCHEMA: description="Tail [log]files via web"
+      APP_VERSION: ${DRONE_SEMVER}
+      GOLANG_VERSION: 1.15.5-alpine3.12
+      PLUGIN_BUILD_ARGS_FROM_ENV: "GOLANG_VERSION,APP_VERSION"
+    when:
+      event:
+      - tag
