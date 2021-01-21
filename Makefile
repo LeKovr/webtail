@@ -50,7 +50,7 @@ SERVER_PORT   ?= 8080
 
 # -----------------------------------------------------------------------------
 
-.PHONY: all doc gen build-standalone coverage cov-html build test lint fmt vet vendor up down build-docker clean-docker
+.PHONY: all doc gen build-standalone coverage cov-html build test lint fmt vet vendor up down docker-docker docker-clean
 
 # default: show target list
 all: help
@@ -154,11 +154,11 @@ down: CMD="rm -f -s $(DC_SERVICE)"
 down: dc
 
 ## Build docker image
-build-docker: CMD="build --no-cache --force-rm $(DC_SERVICE)"
-build-docker: dc
+docker-build: CMD="build --no-cache --force-rm $(DC_SERVICE)"
+docker-build: dc
 
 ## Remove docker image & temp files
-clean-docker:
+docker-clean:
 	[[ "$$($(DOCKER_BIN) images -q $(DC_IMAGE) 2> /dev/null)" == "" ]] || $(DOCKER_BIN) rmi $(DC_IMAGE)
 
 # ------------------------------------------------------------------------------
