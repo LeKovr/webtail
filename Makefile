@@ -173,7 +173,6 @@ dc: docker-compose.yml
   --env=SERVER_PORT=$(SERVER_PORT) \
   --env=LOG_DIR=$(LOG_DIR) \
   --env=DC_IMAGE=$(DC_IMAGE) \
-  --env=APP_VERSION=$(APP_VERSION) \
   --env=GOLANG_VERSION=$(GOLANG_VERSION) \
   docker/compose:$(DC_VER) \
   -p $(PRG) \

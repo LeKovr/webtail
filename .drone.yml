@@ -1,41 +1,53 @@
----
 kind: pipeline
-name: go
+name: ci
 
 steps:
-  - name: testing
-    image: golang:1.15.5
-    pull: true
-    commands:
-      - go get github.com/go-bindata/go-bindata/...
-      - go get github.com/elazarl/go-bindata-assetfs/...
-      - go generate ./cmd/webtail/...
-      - go test -coverprofile=coverage.out -covermode=atomic ./...
-      - go vet ./...
-      - curl -s https://codecov.io/bash | bash
-    environment:
-      CODECOV_TOKEN:
-        from_secret: my-codecov-token
+- name: fetch tags
+  image: alpine/git
+  commands:
+  - git fetch --tags
+  - git describe --tags --always > .version
 
----
-kind: pipeline
-name: docker
+- name: test app
+  image: golang:1.15.5
+  commands:
+  - go get github.com/go-bindata/go-bindata/...
+  - go get github.com/elazarl/go-bindata-assetfs/...
+  - go generate ./cmd/webtail/...
+  - go test -coverprofile=coverage.out -covermode=atomic ./...
+  - go vet ./...
+  - curl -s https://codecov.io/bash | bash
+  environment:
+    CODECOV_TOKEN:
+      from_secret: my-codecov-token
 
-steps:
-  - name: build
-    image: plugins/docker
-    environment:
-      DOCKER_PASSWORD:
-        from_secret: my-docker-token
-      DOCKER_REGISTRY: https://ghcr.io
-      DOCKER_USERNAME: ${DRONE_REPO_OWNER}
-      PLUGIN_TAGS: ${DRONE_SEMVER},latest
-      PLUGIN_REPO: ghcr.io/lekovr/${DRONE_REPO_NAME}
-      PLUGIN_CUSTOM_LABELS: org.opencontainers.image.source=${DRONE_REPO_LINK}
-      PLUGIN_LABEL_SCHEMA: description="Tail [log]files via web"
-      APP_VERSION: ${DRONE_SEMVER}
-      GOLANG_VERSION: 1.15.5-alpine3.12
-      PLUGIN_BUILD_ARGS_FROM_ENV: "GOLANG_VERSION,APP_VERSION"
-    when:
-      event:
+- name: test docker build
+  image: plugins/docker
+  settings:
+    repo: testbuild
+    dry_run: true
+    build_args:
+      - GOLANG_VERSION=1.15.5-alpine3.12
+  when:
+    event:
+      exclude:
       - tag
+
+- name: build docker
+  image: plugins/docker
+  settings:
+    repo: ghcr.io/lekovr/${DRONE_REPO_NAME}
+    dry_run: true
+    registry: https://ghcr.io
+    username: ${DRONE_REPO_OWNER}
+    password:
+      from_secret: my-docker-token
+    auto_tag: true
+    tags: latest
+    custom_labels: org.opencontainers.image.source=${DRONE_REPO_LINK}
+    label_schema: description="Tail [log]files via web"
+    build_args:
+      - GOLANG_VERSION=1.15.5-alpine3.12
+  when:
+    event:
+    - tag

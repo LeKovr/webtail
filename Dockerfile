@@ -2,7 +2,8 @@ ARG GOLANG_VERSION
 
 FROM golang:$GOLANG_VERSION as builder
 
-ARG APP_VERSION
+# git used for app version fetch
+RUN apk add --no-cache git
 
 WORKDIR /opt/app
 
@@ -15,7 +16,7 @@ RUN go get github.com/elazarl/go-bindata-assetfs/...
 # Sources dependent layer
 COPY ./ ./
 RUN go generate ./cmd/webtail/...
-RUN CGO_ENABLED=0 GOOS=linux go build -ldflags "-X main.version=$APP_VERSION" -a ./cmd/webtail/
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags "-X main.version=`git describe --tags --always`" -a ./cmd/webtail
 
 FROM scratch
 
