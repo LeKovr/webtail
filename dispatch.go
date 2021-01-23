@@ -38,7 +38,7 @@ func (h *Hub) fromClient(msg *Message) {
 	h.log.Printf("debug: Received from Client: (%+v)", in)
 	switch in.Type {
 	case "attach":
-		h.attach(in.Channel, msg.Client, data)
+		data = h.attach(in.Channel, msg.Client)
 	case "detach":
 		// проверить, что клиент подписан
 		if !h.wh.WorkerExists(in.Channel) {
@@ -105,13 +105,14 @@ func (h *Hub) fromIndexer(msg *worker.Index) {
 	}
 }
 
-func (h *Hub) attach(channel string, client *Client, data []byte) {
+func (h *Hub) attach(channel string, client *Client) (data []byte) {
 	var err error
 	if !h.wh.ChannelExists(channel) {
 		// проверить что путь зарегистрирован
 		data, _ = json.Marshal(messageOut{Type: "error", Data: "unknown channel", Channel: channel})
 		return
-	} else if !h.wh.WorkerExists(channel) {
+	}
+	if !h.wh.WorkerExists(channel) {
 		// если нет продюсера - создать горутину
 		if channel == "" {
 			err = h.wh.IndexRun(h.index)
@@ -132,14 +133,12 @@ func (h *Hub) attach(channel string, client *Client, data []byte) {
 	// Confirm attach
 	// not via data because have to be first in response
 	datac, _ := json.Marshal(messageOut{Type: "attach", Channel: channel})
-	if !h.send(client, datac) {
-		return
-	}
-	ok := h.sendReply(channel, client)
-	if ok {
-		// добавить клиента в подписчики
-		h.subscribers[channel][client] = true
-		h.stats[channel]++
+	if h.send(client, datac) {
+		if h.sendReply(channel, client) {
+			// добавить клиента в подписчики
+			h.subscribers[channel][client] = true
+			h.stats[channel]++
+		}
 	}
 	return
 }
