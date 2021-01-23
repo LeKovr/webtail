@@ -2,12 +2,19 @@
 
 [![Go Reference][ref1]][ref2]
  [![GitHub Release][gr1]][gr2]
- [![codecov][cc1]][cc2]
  [![Build Status][bs1]][bs2]
- [![GoCard][gc1]][gc2]
  [![FOSSA Status][fs1]][fs2]
  [![GitHub license][gl1]][gl2]
 
+[![codecov][cc1]][cc2]
+ [![Test Coverage][cct1]][cct2]
+ [![Maintainability][ccm1]][ccm2]
+ [![GoCard][gc1]][gc2]
+
+[cct1]: https://api.codeclimate.com/v1/badges/909eca87d9ee5b216a6b/test_coverage
+[cct2]: https://codeclimate.com/github/LeKovr/webtail/test_coverage
+[ccm1]: https://api.codeclimate.com/v1/badges/909eca87d9ee5b216a6b/maintainability
+[ccm2]: https://codeclimate.com/github/LeKovr/webtail/maintainability
 [fs1]: https://app.fossa.com/api/projects/git%2Bgithub.com%2FLeKovr%2Fwebtail.svg?type=shield
 [fs2]: https://app.fossa.com/projects/git%2Bgithub.com%2FLeKovr%2Fwebtail?ref=badge_shield
 [ref1]: https://pkg.go.dev/badge/github.com/LeKovr/webtail.svg
