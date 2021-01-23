@@ -150,7 +150,6 @@ function stats() {
 // Setup websocket
 function connect() {
     try {
-
         var host = 'ws';
         if (window.location.protocol == 'https:') host = 'wss';
         host = host + '://' + WebTail.uri;
@@ -211,35 +210,40 @@ function processLine(l) {
         // TODO: stats requested by calling stats() in console
         console.log(JSON.stringify(m.data, null, 4))
     } else if (m.type == 'log') {
-        var $area = $('#tail-data');
-        var str = (m.data != undefined) ? m.data : '';
-        var mask = $('#mask').val();
-        var container;
-        if (mask == '') {
-            container = document.createTextNode(str)
-        } else {
-            container = document.createElement("span");
-            var text = document.createTextNode(str);
-            container.appendChild(text);
-            if (str.search($('#mask').val()) != -1) {
-                container.style.color = "red";
-            }
-        }
-        $area.append(container);;
-        $area.append("<br />");
-        if (!WebTail.focused) {
-            titleUnread(++WebTail.unread);
-        }
-        if (!WebTail.wait) {
-            setTimeout(updateScroll, WebTail.every);
-            WebTail.wait = true;
-        }
+        processLog(m.data);
     } else if (m.type == 'error') {
         console.warn("server error: %o", m);
         $('#log').text(m.data);
     } else {
         console.warn("unknown response: %o", m);
     }
+}
+
+function processLog(data) {
+    var $area = $('#tail-data');
+    var str = (data != undefined) ? data : '';
+    var mask = $('#mask').val();
+    var container;
+    if (mask == '') {
+        container = document.createTextNode(str)
+    } else {
+        container = document.createElement("span");
+        var text = document.createTextNode(str);
+        container.appendChild(text);
+        if (str.search($('#mask').val()) != -1) {
+            container.style.color = "red";
+        }
+    }
+    $area.append(container);;
+    $area.append("<br />");
+    if (!WebTail.focused) {
+        titleUnread(++WebTail.unread);
+    }
+    if (!WebTail.wait) {
+        setTimeout(updateScroll, WebTail.every);
+        WebTail.wait = true;
+    }
+
 }
 
 // code from https://dev.opera.com/articles/fixing-the-scrolltop-bug/
