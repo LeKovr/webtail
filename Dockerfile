@@ -10,8 +10,8 @@ WORKDIR /opt/app
 # Cached layer
 COPY ./go.mod ./go.sum ./
 RUN go mod download
-RUN go get github.com/go-bindata/go-bindata/...
-RUN go get github.com/elazarl/go-bindata-assetfs/...
+RUN go get -u github.com/phogolabs/parcello
+RUN go install github.com/phogolabs/parcello/cmd/parcello
 
 # Sources dependent layer
 COPY ./ ./
