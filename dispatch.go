@@ -38,7 +38,7 @@ func (h *Hub) fromClient(msg *Message) {
 	h.log.Printf("debug: Received from Client: (%+v)", in)
 	switch in.Type {
 	case "attach":
-		data = h.attach(in.Channel, msg.Client)
+		h.attach(in.Channel, msg.Client, data)
 	case "detach":
 		// проверить, что клиент подписан
 		if !h.wh.WorkerExists(in.Channel) {
@@ -105,7 +105,7 @@ func (h *Hub) fromIndexer(msg *worker.Index) {
 	}
 }
 
-func (h *Hub) attach(channel string, client *Client) (data []byte) {
+func (h *Hub) attach(channel string, client *Client, data []byte) {
 	var err error
 	if !h.wh.ChannelExists(channel) {
 		// проверить что путь зарегистрирован
