@@ -224,7 +224,6 @@ func (wh *WorkerHub) indexRun(out chan *worker.Index, unregister chan bool) {
 
 	<-unregister
 	wh.Log.Print("debug: indexer stopped")
-	return
 }
 
 func (wh *WorkerHub) indexLoad(out chan *worker.Index, lastmod time.Time) {

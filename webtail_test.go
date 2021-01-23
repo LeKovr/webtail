@@ -113,18 +113,18 @@ func (ss *ServerSuite) TestIndex() {
 	ticker := time.NewTicker(time.Second)
 	defer ticker.Stop()
 	// err := c.WriteJSON(&message{Type: "stats", Channel: t.String()})
-	for {
-		select {
-		case <-ticker.C:
-			wsclose(ws, done, cnt)
-			break //	return
-		case <-interrupt:
-			// log.Println("interrupt")
-			wsclose(ws, done, cnt)
-			break //	return
-		}
-		break
+	//	for {
+	select {
+	case <-ticker.C:
+		wsclose(ws, done, cnt)
+	//	break //	return
+	case <-interrupt:
+		// log.Println("interrupt")
+		wsclose(ws, done, cnt)
+		//	break //	return
 	}
+	//break
+	//	}
 
 	ss.printLogs()
 
