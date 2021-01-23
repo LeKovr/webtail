@@ -9,7 +9,7 @@ steps:
   - git describe --tags --always > .version
 
 - name: test app
-  image: golang:1.15.5
+  image: golang:1.15.5-alpine3.12
   commands:
   - go get -u github.com/phogolabs/parcello
   - go install github.com/phogolabs/parcello/cmd/parcello
@@ -22,6 +22,7 @@ steps:
   - ./cc-test-reporter format-coverage coverage.out -t gocov -p $${DRONE_REPO_LINK#https://}
   - ./cc-test-reporter upload-coverage
   environment:
+    CGO_ENABLED: 0
     CODECOV_TOKEN:
       from_secret: my-codecov-token
     CC_TEST_REPORTER_ID:
