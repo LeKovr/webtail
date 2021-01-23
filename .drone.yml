@@ -33,11 +33,10 @@ steps:
       exclude:
       - tag
 
-- name: build docker
+- name: publish docker
   image: plugins/docker
   settings:
     repo: ghcr.io/lekovr/${DRONE_REPO_NAME}
-    dry_run: true
     registry: https://ghcr.io
     username: ${DRONE_REPO_OWNER}
     password:
