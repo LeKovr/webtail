@@ -31,7 +31,7 @@ PRG           ?= $(shell basename $$PWD)
 DC_SERVICE    ?= app
 
 # Generated docker image
-DC_IMAGE      ?= webtail
+DC_IMAGE      ?= ghcr.io/lekovr/webtail
 
 # docker-compose image version
 DC_VER        ?= latest
@@ -40,7 +40,7 @@ DC_VER        ?= latest
 DOCKER_BIN    ?= docker
 
 # docker app log files directory
-LOG_DIR       ?= /var/log
+LOG_DIR       ?= ./log
 
 # -----------------------------------------------------------------------------
 # App config
