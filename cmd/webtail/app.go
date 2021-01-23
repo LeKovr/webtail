@@ -35,17 +35,18 @@ func run(exitFunc func(code int)) {
 	}
 	go wt.Run()
 
-	if cfg.HTML != "" {
-		http.Handle("/", http.FileServer(http.Dir(cfg.HTML)))
-	} else {
-		http.Handle("/", http.FileServer(internal.FS()))
-	}
-	http.HandleFunc("/tail", func(w http.ResponseWriter, r *http.Request) {
-		wt.Handle(w, r)
-	})
+	http.Handle("/", fileserver(cfg.HTML))
+	http.Handle("/tail", wt)
 	http.HandleFunc("/api/stats", stats_api.Handler)
 	lg.Print("Listen: ", cfg.Listen)
 	err = http.ListenAndServe(cfg.Listen, nil)
+}
+
+func fileserver(path string) http.Handler {
+	if path != "" {
+		return http.FileServer(http.Dir(path))
+	}
+	return http.FileServer(internal.FS())
 }
 
 // exit after deferred cleanups have run

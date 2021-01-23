@@ -125,7 +125,7 @@ func (c *Client) writePump() {
 }
 
 // Handle handles websocket requests from the peer
-func (wt *Service) Handle(w http.ResponseWriter, r *http.Request) {
+func (wt *Service) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		wt.lg.Println(err)

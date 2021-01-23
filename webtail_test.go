@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"net/http"
 	"net/http/httptest"
 	"os"
 	"strings"
@@ -64,7 +63,7 @@ func (ss *ServerSuite) TearDownSuite() {
 
 func (ss *ServerSuite) TestIndex() {
 	ss.hook.Reset()
-	s := httptest.NewServer(http.HandlerFunc(ss.srv.Handle))
+	s := httptest.NewServer(ss.srv) //http.HandlerFunc(ss.srv.Handle))
 	defer s.Close()
 	// Convert http://127.0.0.1 to ws://127.0.0.
 	u := "ws" + strings.TrimPrefix(s.URL, "http")
