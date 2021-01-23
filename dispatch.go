@@ -50,16 +50,7 @@ func (h *Hub) fromClient(msg *Message) {
 		} else {
 			// удалить подписку
 			data, _ = json.Marshal(messageOut{Type: "detach", Channel: in.Channel})
-
-			delete(h.subscribers[in.Channel], msg.Client)
-			h.stats[in.Channel]--
-			if h.stats[in.Channel] == 0 {
-				// если подписчиков не осталось - отправить true в unregister продюсера и  удалить из массива
-				err = h.wh.WorkerStop(in.Channel)
-				if err != nil {
-					h.log.Printf("warn: worker stop error: %+v", err)
-				}
-			}
+			h.unsubscribe(in.Channel, msg.Client)
 		}
 
 	case "stats":
@@ -208,19 +199,22 @@ func (h *Hub) remove(client *Client) {
 	for k := range h.subscribers {
 		if _, ok := h.subscribers[k][client]; ok {
 			h.log.Printf("debug: Remove subscriber from channel (%s)", k)
-
-			delete(h.subscribers[k], client)
-			h.stats[k]--
-			if h.stats[k] == 0 {
-				// если подписчиков не осталось - отправить true в unregister продюсера
-				err := h.wh.WorkerStop(k)
-				if err != nil {
-					h.log.Printf("warn: worker stop error: %+v", err)
-				}
-			}
+			h.unsubscribe(k, client)
 		}
 	}
 	close(client.send)
 	delete(h.clients, client)
 
+}
+
+func (h *Hub) unsubscribe(k string, client *Client) {
+	delete(h.subscribers[k], client)
+	h.stats[k]--
+	if h.stats[k] == 0 {
+		// если подписчиков не осталось - отправить true в unregister продюсера
+		err := h.wh.WorkerStop(k)
+		if err != nil {
+			h.log.Printf("warn: worker stop error: %+v", err)
+		}
+	}
 }
