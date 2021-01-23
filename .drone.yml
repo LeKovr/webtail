@@ -16,11 +16,10 @@ steps:
   - go generate ./cmd/webtail/...
   - go test -tags test -covermode=atomic -coverprofile=coverage.out ./...
   - go vet ./...
-  - curl -s https://codecov.io/bash | bash
-  - curl -L https://codeclimate.com/downloads/test-reporter/test-reporter-latest-linux-amd64 > ./cc-test-reporter
+  - curl -sS https://codecov.io/bash | bash
+  - curl -sSL https://codeclimate.com/downloads/test-reporter/test-reporter-latest-linux-amd64 > ./cc-test-reporter
   - chmod +x ./cc-test-reporter
-  - echo $${DRONE_REPO_LINK#https://}
-  - ./cc-test-reporter format-coverage coverage.out -t gocov -p github.com/LeKovr/webtail
+  - ./cc-test-reporter format-coverage coverage.out -t gocov -p $${DRONE_REPO_LINK#https://}
   - ./cc-test-reporter upload-coverage
   environment:
     CODECOV_TOKEN:
