@@ -1,8 +1,9 @@
 dist
 webtail
 !cmd/webtail
-cmd/webtail/bindata*.go
+resource.go
 coverage.out
+coverage/
 log
 var
 vendor

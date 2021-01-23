@@ -4,10 +4,10 @@ import (
 	"log"
 	"net/http"
 
-	assetfs "github.com/elazarl/go-bindata-assetfs"
 	stats_api "github.com/fukata/golang-stats-api-handler"
 
 	"github.com/LeKovr/webtail"
+	"github.com/LeKovr/webtail/cmd/webtail/internal"
 )
 
 // Config holds all config vars
@@ -38,7 +38,7 @@ func run(exitFunc func(code int)) {
 	if cfg.HTML != "" {
 		http.Handle("/", http.FileServer(http.Dir(cfg.HTML)))
 	} else {
-		http.Handle("/", http.FileServer(&assetfs.AssetFS{Asset: Asset, AssetDir: AssetDir, AssetInfo: AssetInfo}))
+		http.Handle("/", http.FileServer(internal.FS()))
 	}
 	http.HandleFunc("/tail", func(w http.ResponseWriter, r *http.Request) {
 		wt.Handle(w, r)

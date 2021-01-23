@@ -1,5 +1,3 @@
-//go:generate go-bindata-assetfs -pkg $GOPACKAGE -prefix ../../html ../../html/
-
 package main
 
 import (
