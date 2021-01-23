@@ -9,7 +9,7 @@
  [![GitHub license][gl1]][gl2]
 
 [fs1]: https://app.fossa.com/api/projects/git%2Bgithub.com%2FLeKovr%2Fwebtail.svg?type=shield
-[fs2]: https://app.fossa.com/projects/git%2Bgithub.com%2FLeKovr%2Fwebtail?ref=badge_shield)
+[fs2]: https://app.fossa.com/projects/git%2Bgithub.com%2FLeKovr%2Fwebtail?ref=badge_shield
 [ref1]: https://pkg.go.dev/badge/github.com/LeKovr/webtail.svg
 [ref2]: https://pkg.go.dev/github.com/LeKovr/webtail
 [cc1]: https://codecov.io/gh/LeKovr/webtail/branch/master/graph/badge.svg
