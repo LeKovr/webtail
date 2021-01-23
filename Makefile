@@ -9,7 +9,7 @@ SHELL          = /bin/sh
 
 GO            ?= go
 # not supported in BusyBox v1.26.2
-SOURCES        = worker/*.go *.go
+SOURCES        = worker/*.go cmd/webtail/*.go *.go
 
 BUILD_DATE    ?= $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
 VCS_REF       ?= $(shell git rev-parse --short HEAD)
@@ -73,18 +73,20 @@ vet:
 	$(GO) vet ./...
 
 ## Run tests
-test: gen
-	$(GO) test -coverprofile=coverage.out ./...
+test: gen coverage.out
+
+coverage.out: $(SOURCES)
+	$(GO) test -tags test -covermode=atomic -coverprofile=$@ ./...
 
 ## Show package coverage in html (make cov-html PKG=counter)
-cov-html:
+cov-html: coverage.out
 	$(GO) tool cover -html=coverage.out
 
 ## Build app
 build: gen $(PRG)
 
 ## Build webtail command
-$(PRG): cmd/webtail/*.go $(SOURCES)
+$(PRG): $(SOURCES)
 	GOOS=$(OS) GOARCH=$(ARCH) $(GO) build -v -o $@ -ldflags \
 	  "-X main.built=$(BUILD_DATE) -X main.version=$(APP_VERSION)" ./cmd/$@
 
