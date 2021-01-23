@@ -1,13 +1,15 @@
 # webtail
 
 [![Go Reference][ref1]][ref2]
-[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2FLeKovr%2Fwebtail.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2FLeKovr%2Fwebtail?ref=badge_shield)
- [![codecov][cc1]][cc2]
- [![GoCard][gc1]][gc2]
- [![Build Status][bs1]][bs2]
  [![GitHub Release][gr1]][gr2]
+ [![codecov][cc1]][cc2]
+ [![Build Status][bs1]][bs2]
+ [![GoCard][gc1]][gc2]
+ [![FOSSA Status][fs1]][fs2]
  [![GitHub license][gl1]][gl2]
 
+[fs1]: https://app.fossa.com/api/projects/git%2Bgithub.com%2FLeKovr%2Fwebtail.svg?type=shield
+[fs2]: https://app.fossa.com/projects/git%2Bgithub.com%2FLeKovr%2Fwebtail?ref=badge_shield)
 [ref1]: https://pkg.go.dev/badge/github.com/LeKovr/webtail.svg
 [ref2]: https://pkg.go.dev/github.com/LeKovr/webtail
 [cc1]: https://codecov.io/gh/LeKovr/webtail/branch/master/graph/badge.svg
@@ -28,7 +30,6 @@ This service loads list of logfiles from directory tree & continuously shows res
 Project status: MVP
 
 ![Ping stream sample](webtail-ping.png)
-
 
 [![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2FLeKovr%2Fwebtail.svg?type=large)](https://app.fossa.com/projects/git%2Bgithub.com%2FLeKovr%2Fwebtail?ref=badge_large)
 
