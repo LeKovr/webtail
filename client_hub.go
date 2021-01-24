@@ -3,8 +3,9 @@ package webtail
 import (
 	"encoding/json"
 	"sort"
+	"time"
 
-	"github.com/LeKovr/webtail/worker"
+	"github.com/LeKovr/go-base/log"
 )
 
 type messageIn struct {
@@ -20,13 +21,108 @@ type messageStats struct {
 	Type string            `json:"type"`
 	Data map[string]uint64 `json:"data,omitempty"`
 }
-type messageIndex struct {
-	Type  string       `json:"type"`
-	Data  worker.Index `json:"data"`
-	Error string       `json:"error,omitempty"`
+
+// IndexItemEvent holds messages from indexer
+type IndexItemEvent struct {
+	ModTime time.Time `json:"mtime"`
+	Size    int64     `json:"size"`
+	Name    string    `json:"name"`
+	Deleted bool      `json:"deleted"`
 }
 
-func (h *Hub) fromClient(msg *Message) {
+type messageIndex struct {
+	Type  string         `json:"type"`
+	Data  IndexItemEvent `json:"data"`
+	Error string         `json:"error,omitempty"`
+}
+
+// Message holds data received from client
+type Message struct {
+	Client  *Client
+	Message []byte
+}
+
+// WorkerMessage holds messages from workers
+type WorkerMessage struct {
+	Channel string
+	Data    string //[]byte
+}
+
+// subscribers holds clients subscribed on channel
+type subscribers map[*Client]bool
+
+// ClientHub maintains the set of active clients and broadcasts messages to them
+type ClientHub struct {
+	log log.Logger
+
+	// Registered clients.
+	clients map[*Client]bool
+
+	// Inbound messages from the clients.
+	broadcast chan *Message
+
+	// Inbound messages from the workers.
+	receive chan *WorkerMessage
+
+	// Inbound messages from the channel indexer.
+	index chan *IndexItemEvent
+
+	// Register requests from the clients.
+	register chan *Client
+
+	// Unregister requests from clients.
+	unregister chan *Client
+
+	// Worker Hub
+	wh *TailHub
+
+	// Channel subscribers
+	subscribers map[string]subscribers
+
+	// Channel subscriber counts
+	stats map[string]uint64
+}
+
+func newClientHub(logger log.Logger, wh *TailHub) *ClientHub {
+	return &ClientHub{
+		log:         logger,
+		broadcast:   make(chan *Message),
+		register:    make(chan *Client),
+		unregister:  make(chan *Client),
+		clients:     make(map[*Client]bool),
+		receive:     make(chan *WorkerMessage), // 1),
+		index:       make(chan *IndexItemEvent),
+		wh:          wh,
+		subscribers: make(map[string]subscribers),
+		stats:       make(map[string]uint64),
+	}
+}
+
+func (h *ClientHub) run() {
+	h.wh.LoadIndex(h.index)
+	for {
+		select {
+		case client := <-h.register:
+			h.clients[client] = true
+
+		case client := <-h.unregister:
+			if _, ok := h.clients[client]; ok {
+				h.remove(client)
+			}
+		case cmessage := <-h.broadcast:
+			// client sends attach/detach/?list
+			h.fromClient(cmessage)
+		case wmessage := <-h.receive:
+			// worker sends file line
+			h.fromWorker(wmessage)
+		case imessage := <-h.index:
+			// worker sends index update
+			h.fromIndexer(imessage)
+		}
+	}
+}
+
+func (h *ClientHub) fromClient(msg *Message) {
 	var data []byte
 	in := messageIn{}
 	err := json.Unmarshal(msg.Message, &in)
@@ -67,7 +163,7 @@ func (h *Hub) fromClient(msg *Message) {
 }
 
 // process message from worker
-func (h *Hub) fromWorker(msg *worker.Message) bool {
+func (h *ClientHub) fromWorker(msg *WorkerMessage) bool {
 
 	if h.wh.TraceEnabled() {
 		h.log.Printf("debug: Trace from Worker: (%+v)", msg)
@@ -88,7 +184,7 @@ func (h *Hub) fromWorker(msg *worker.Message) bool {
 }
 
 // process message from worker
-func (h *Hub) fromIndexer(msg *worker.Index) {
+func (h *ClientHub) fromIndexer(msg *IndexItemEvent) {
 
 	if h.wh.TraceEnabled() {
 		h.log.Printf("debug: Trace from Indexer: (%+v)", msg)
@@ -105,7 +201,7 @@ func (h *Hub) fromIndexer(msg *worker.Index) {
 	}
 }
 
-func (h *Hub) attach(channel string, client *Client) (data []byte) {
+func (h *ClientHub) attach(channel string, client *Client) (data []byte) {
 	var err error
 	if !h.wh.ChannelExists(channel) {
 		// проверить что путь зарегистрирован
@@ -143,7 +239,7 @@ func (h *Hub) attach(channel string, client *Client) (data []byte) {
 	return
 }
 
-func (h *Hub) sendReply(ch string, cl *Client) bool {
+func (h *ClientHub) sendReply(ch string, cl *Client) bool {
 
 	if ch == "" {
 		// отправить клиенту список каналов
@@ -158,7 +254,7 @@ func (h *Hub) sendReply(ch string, cl *Client) bool {
 		for _, v := range keys {
 			idx := &messageIndex{
 				Type: "index",
-				Data: worker.Index{
+				Data: IndexItemEvent{
 					Name:    v,
 					ModTime: (*istore)[v].ModTime,
 					Size:    (*istore)[v].Size,
@@ -181,7 +277,7 @@ func (h *Hub) sendReply(ch string, cl *Client) bool {
 	return true
 }
 
-func (h *Hub) send(client *Client, data []byte) bool {
+func (h *ClientHub) send(client *Client, data []byte) bool {
 
 	h.log.Printf("debug: Send reply: %v", string(data))
 	select {
@@ -194,7 +290,7 @@ func (h *Hub) send(client *Client, data []byte) bool {
 }
 
 // remove all client subscriptions
-func (h *Hub) remove(client *Client) {
+func (h *ClientHub) remove(client *Client) {
 	for k := range h.subscribers {
 		if _, ok := h.subscribers[k][client]; ok {
 			h.log.Printf("debug: Remove subscriber from channel (%s)", k)
@@ -206,7 +302,7 @@ func (h *Hub) remove(client *Client) {
 
 }
 
-func (h *Hub) unsubscribe(k string, client *Client) {
+func (h *ClientHub) unsubscribe(k string, client *Client) {
 	delete(h.subscribers[k], client)
 	h.stats[k]--
 	if h.stats[k] == 0 {

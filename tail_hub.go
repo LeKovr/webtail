@@ -10,8 +10,6 @@ import (
 	"github.com/LeKovr/go-base/log"
 	"github.com/dc0d/dirwatch"
 	"github.com/nxadm/tail"
-
-	"github.com/LeKovr/webtail/worker"
 )
 
 // Config defines local application flags
@@ -36,16 +34,25 @@ type tailer struct {
 	Incomplete bool
 }
 
-// WorkerHub holds Worker hub operations
-type WorkerHub struct {
+// IndexItemAttr holds File (index item) Attrs
+type IndexItemAttr struct {
+	ModTime time.Time `json:"mtime"`
+	Size    int64     `json:"size"`
+}
+
+// IndexItemAttrStore holds all index items
+type IndexItemAttrStore map[string]*IndexItemAttr
+
+// TailHub holds Worker hub operations
+type TailHub struct {
 	Log     log.Logger
 	Config  Config
 	workers map[string]*tailer
-	index   worker.IndexStore
+	index   IndexItemAttrStore
 }
 
-// NewTailer creates tailer
-func NewTailer(logger log.Logger, cfg Config) (*WorkerHub, error) {
+// NewTailHub creates tailer hub
+func NewTailHub(logger log.Logger, cfg Config) (*TailHub, error) {
 	_, err := os.Stat(cfg.Root)
 	if err != nil {
 		return nil, err
@@ -57,28 +64,28 @@ func NewTailer(logger log.Logger, cfg Config) (*WorkerHub, error) {
 	if aPath != cfg.Root {
 		cfg.Root = aPath
 	}
-	return &WorkerHub{
+	return &TailHub{
 		Config: cfg,
 		Log:    logger,
 
 		workers: make(map[string]*tailer),
-		index:   make(worker.IndexStore),
+		index:   make(IndexItemAttrStore),
 	}, nil
 }
 
 // LoadIndex fills index map on program start
-func (wh *WorkerHub) LoadIndex(out chan *worker.Index) {
+func (wh *TailHub) LoadIndex(out chan *IndexItemEvent) {
 	go wh.indexLoad(out, time.Time{})
 }
 
 // WorkerExists checks if worker already registered
-func (wh *WorkerHub) WorkerExists(channel string) bool {
+func (wh *TailHub) WorkerExists(channel string) bool {
 	_, ok := wh.workers[channel]
 	return ok
 }
 
 // ChannelExists checks if channel allowed to attach
-func (wh *WorkerHub) ChannelExists(channel string) bool {
+func (wh *TailHub) ChannelExists(channel string) bool {
 	if channel == "" {
 		return true
 	}
@@ -87,18 +94,18 @@ func (wh *WorkerHub) ChannelExists(channel string) bool {
 }
 
 // SetTrace turns on/off logging of incoming workers messages
-func (wh *WorkerHub) SetTrace(on bool) {
+func (wh *TailHub) SetTrace(on bool) {
 	wh.Log.Printf("warn: tracing set to %t", on)
 	wh.Config.Trace = on
 }
 
 // TraceEnabled returns trace state
-func (wh *WorkerHub) TraceEnabled() bool {
+func (wh *TailHub) TraceEnabled() bool {
 	return wh.Config.Trace
 }
 
 // WorkerRun runs worker
-func (wh *WorkerHub) WorkerRun(channel string, out chan *worker.Message) error {
+func (wh *TailHub) WorkerRun(channel string, out chan *WorkerMessage) error {
 
 	config := tail.Config{
 		Follow: true,
@@ -135,7 +142,7 @@ func (wh *WorkerHub) WorkerRun(channel string, out chan *worker.Message) error {
 }
 
 // IndexRun runs indexer
-func (wh *WorkerHub) IndexRun(out chan *worker.Index) error {
+func (wh *TailHub) IndexRun(out chan *IndexItemEvent) error {
 	unregister := make(chan bool)
 	wh.workers[""] = &tailer{Unregister: unregister}
 	go wh.indexRun(out, unregister)
@@ -143,7 +150,7 @@ func (wh *WorkerHub) IndexRun(out chan *worker.Index) error {
 }
 
 // WorkerStop stops worker or indexer
-func (wh *WorkerHub) WorkerStop(channel string) error {
+func (wh *TailHub) WorkerStop(channel string) error {
 	w := wh.workers[channel]
 	w.Unregister <- true
 	delete(wh.workers, channel)
@@ -151,12 +158,12 @@ func (wh *WorkerHub) WorkerStop(channel string) error {
 }
 
 // Buffer returns worker buffer
-func (wh *WorkerHub) Buffer(channel string) [][]byte {
+func (wh *TailHub) Buffer(channel string) [][]byte {
 	return wh.workers[channel].Buffer
 }
 
 // Append adds a line into worker buffer
-func (wh *WorkerHub) Append(channel string, data []byte) bool {
+func (wh *TailHub) Append(channel string, data []byte) bool {
 	if wh.workers[channel].Incomplete {
 		wh.workers[channel].Incomplete = false
 		return false
@@ -171,12 +178,12 @@ func (wh *WorkerHub) Append(channel string, data []byte) bool {
 }
 
 // Index returns index items
-func (wh *WorkerHub) Index() *worker.IndexStore {
+func (wh *TailHub) Index() *IndexItemAttrStore {
 	return &wh.index
 }
 
 // Update updates item in index
-func (wh *WorkerHub) Update(msg *worker.Index) {
+func (wh *TailHub) Update(msg *IndexItemEvent) {
 	if msg.Deleted {
 		if _, ok := wh.index[msg.Name]; ok {
 			wh.Log.Printf("debug: deleting file %s from index", msg.Name)
@@ -184,10 +191,10 @@ func (wh *WorkerHub) Update(msg *worker.Index) {
 		}
 		return
 	}
-	wh.index[msg.Name] = &worker.IndexItem{ModTime: msg.ModTime, Size: msg.Size}
+	wh.index[msg.Name] = &IndexItemAttr{ModTime: msg.ModTime, Size: msg.Size}
 }
 
-func (wh *WorkerHub) worker(tf *tail.Tail, channel string, out chan *worker.Message, unregister chan bool) {
+func (wh *TailHub) worker(tf *tail.Tail, channel string, out chan *WorkerMessage, unregister chan bool) {
 
 	wh.Log.Printf("debug: worker for channel %s started", channel)
 	for {
@@ -195,7 +202,7 @@ func (wh *WorkerHub) worker(tf *tail.Tail, channel string, out chan *worker.Mess
 		case line := <-tf.Lines:
 			//wh.Log.Printf("debug: got line for channel %s", channel)
 
-			out <- &worker.Message{Channel: channel, Data: line.Text}
+			out <- &WorkerMessage{Channel: channel, Data: line.Text}
 		case <-unregister:
 			err := tf.Stop() //Cleanup()
 			if err != nil {
@@ -208,7 +215,7 @@ func (wh *WorkerHub) worker(tf *tail.Tail, channel string, out chan *worker.Mess
 	}
 }
 
-func (wh *WorkerHub) indexRun(out chan *worker.Index, unregister chan bool) {
+func (wh *TailHub) indexRun(out chan *IndexItemEvent, unregister chan bool) {
 	wh.indexLoad(out, time.Time{})
 	wh.Log.Print("debug: indexer started")
 
@@ -226,14 +233,14 @@ func (wh *WorkerHub) indexRun(out chan *worker.Index, unregister chan bool) {
 	wh.Log.Print("debug: indexer stopped")
 }
 
-func (wh *WorkerHub) indexLoad(out chan *worker.Index, lastmod time.Time) {
+func (wh *TailHub) indexLoad(out chan *IndexItemEvent, lastmod time.Time) {
 
 	dir := strings.TrimSuffix(wh.Config.Root, "/")
 	err := filepath.Walk(wh.Config.Root, func(path string, f os.FileInfo, err error) error {
 		if !f.IsDir() {
 			if f.ModTime().After(lastmod) {
 				p := strings.TrimPrefix(path, dir+"/")
-				out <- &worker.Index{Name: p, ModTime: f.ModTime(), Size: f.Size()}
+				out <- &IndexItemEvent{Name: p, ModTime: f.ModTime(), Size: f.Size()}
 			}
 		}
 		return nil
@@ -243,20 +250,20 @@ func (wh *WorkerHub) indexLoad(out chan *worker.Index, lastmod time.Time) {
 	}
 }
 
-func (wh *WorkerHub) indexUpdateFile(out chan *worker.Index, path string) {
+func (wh *TailHub) indexUpdateFile(out chan *IndexItemEvent, path string) {
 	dir := strings.TrimSuffix(wh.Config.Root, "/")
 	p := strings.TrimPrefix(path, dir+"/")
 
 	f, err := os.Stat(path)
 	if err != nil {
 		if os.IsNotExist(err) {
-			out <- &worker.Index{Name: p, Deleted: true}
+			out <- &IndexItemEvent{Name: p, Deleted: true}
 		} else {
 			wh.Log.Printf("error: cannot get stat for file %s with error %v", path, err)
 		}
 	}
 
 	if !f.IsDir() {
-		out <- &worker.Index{Name: p, ModTime: f.ModTime(), Size: f.Size()}
+		out <- &IndexItemEvent{Name: p, ModTime: f.ModTime(), Size: f.Size()}
 	}
 }

@@ -9,7 +9,7 @@ SHELL          = /bin/sh
 
 GO            ?= go
 # not supported in BusyBox v1.26.2
-SOURCES        = worker/*.go cmd/webtail/*.go *.go
+SOURCES        = *.go cmd/webtail/*.go
 
 BUILD_DATE    ?= $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
 VCS_REF       ?= $(shell git rev-parse --short HEAD)
