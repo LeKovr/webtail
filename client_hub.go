@@ -213,7 +213,7 @@ func (h *ClientHub) attach(channel string, client *Client) (data []byte) {
 		if channel == "" {
 			err = h.wh.IndexRun(h.index)
 		} else {
-			err = h.wh.WorkerRun(channel, h.receive)
+			err = h.wh.TailRun(channel, h.receive)
 		}
 		if err != nil {
 			h.log.Printf("warn: worker create error: %+v", err)

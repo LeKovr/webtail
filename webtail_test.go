@@ -56,9 +56,24 @@ func (ss *ServerSuite) SetupSuite() {
 	go ss.srv.Run()
 }
 
+/*
+http.Handle("/tail", wt)
+
+w := httptest.NewRecorder()
+req, _ := http.NewRequest(tt.method, tt.url, tt.reader)
+if tt.ctype != "" {
+		req.Header.Set("Content-Type", tt.ctype)
+}
+srv.ServeHTTP(w, req)
+*/
 func (ss *ServerSuite) TearDownSuite() {
 	os.Remove(ss.cfg.Root + RootFile)
 	os.Remove(ss.cfg.Root + SubFile)
+}
+
+type received struct {
+	Type string          `json:"type"`
+	Data json.RawMessage `json:"data,omitempty"`
 }
 
 func (ss *ServerSuite) TestIndex() {
@@ -74,6 +89,15 @@ func (ss *ServerSuite) TestIndex() {
 	defer ws.Close()
 
 	err = ws.WriteJSON(&messageOut{Type: "attach"}) //, Channel: "#"})
+	require.Nil(ss.T(), err)
+
+	err = ws.WriteJSON(&messageOut{Type: "attach", Channel: "file.log"})
+	require.Nil(ss.T(), err)
+	err = ws.WriteJSON(&messageOut{Type: "attach", Channel: "file.log"})
+	require.Nil(ss.T(), err)
+	err = ws.WriteJSON(&messageOut{Type: "trace"})
+	require.Nil(ss.T(), err)
+	err = ws.WriteJSON(&messageOut{Type: "detach", Channel: "file.log"})
 	require.Nil(ss.T(), err)
 
 	start := time.Now()
@@ -94,14 +118,15 @@ func (ss *ServerSuite) TestIndex() {
 			}
 			result := bytes.Split(msg, newline)
 			for i := range result {
-				x := messageIndex{} //Out{}
+				log.Println(">>>>", string(result[i]))
+				x := received{} //Out{}
 				err := json.Unmarshal(result[i], &x)
 				require.Nil(ss.T(), err)
-				//log.Println(x.Data)
+				log.Printf("==>> %s\n", x.Data)
 			}
 			cnt += len(result)
-			//log.Printf("recv: %d", cnt)
-			if cnt == 5 {
+			log.Printf("recv: %d", cnt)
+			if cnt == 9 {
 				log.Printf("%d messages received for %s", cnt, time.Since(start).String())
 				interrupt <- os.Interrupt
 				return

@@ -104,8 +104,8 @@ func (wh *TailHub) TraceEnabled() bool {
 	return wh.Config.Trace
 }
 
-// WorkerRun runs worker
-func (wh *TailHub) WorkerRun(channel string, out chan *WorkerMessage) error {
+// TailRun runs tail worker
+func (wh *TailHub) TailRun(channel string, out chan *WorkerMessage) error {
 
 	config := tail.Config{
 		Follow: true,
@@ -234,6 +234,7 @@ func (wh *TailHub) indexRun(out chan *IndexItemEvent, unregister chan bool) {
 }
 
 func (wh *TailHub) indexLoad(out chan *IndexItemEvent, lastmod time.Time) {
+	wh.Log.Print("debug: ============== indexLoad start")
 
 	dir := strings.TrimSuffix(wh.Config.Root, "/")
 	err := filepath.Walk(wh.Config.Root, func(path string, f os.FileInfo, err error) error {
@@ -248,6 +249,7 @@ func (wh *TailHub) indexLoad(out chan *IndexItemEvent, lastmod time.Time) {
 	if err != nil {
 		wh.Log.Printf("error: path walk %+v", err)
 	}
+	wh.Log.Print("debug: ============== indexLoad stop")
 }
 
 func (wh *TailHub) indexUpdateFile(out chan *IndexItemEvent, path string) {
