@@ -110,39 +110,44 @@ func (c *Client) writePump() {
 				}
 				return
 			}
-
-			w, err := c.conn.NextWriter(websocket.TextMessage)
-			if err != nil {
-				log.Printf("warn: NextWriter: %v", err)
-				return
-			}
-			_, err = w.Write(message)
-			if err != nil {
-				log.Printf("warn: Write: %v", err)
-				return
-			}
-
-			// Add queued chat messages to the current websocket message.
-			n := len(c.send)
-			for i := 0; i < n; i++ {
-				if _, err = w.Write(newline); err != nil {
-					return
-				}
-				if _, err = w.Write(<-c.send); err != nil {
-					return
-				}
-			}
-
-			if err := w.Close(); err != nil {
-				return
-			}
+			c.sendMesage(message)
 		case <-ticker.C:
-			if err := c.conn.SetWriteDeadline(time.Now().Add(writeWait)); err != nil {
-				return
+			err := c.conn.SetWriteDeadline(time.Now().Add(writeWait))
+			if err != nil {
+				err = c.conn.WriteMessage(websocket.PingMessage, nil)
 			}
-			if err := c.conn.WriteMessage(websocket.PingMessage, nil); err != nil {
+			if err != nil {
 				return
 			}
 		}
+	}
+}
+
+func (c *Client) sendMesage(message []byte) {
+	w, err := c.conn.NextWriter(websocket.TextMessage)
+	if err != nil {
+		log.Printf("warn: NextWriter: %v", err)
+		return
+	}
+	_, err = w.Write(message)
+	if err != nil {
+		log.Printf("warn: Write: %v", err)
+		return
+	}
+
+	// Add queued chat messages to the current websocket message.
+	n := len(c.send)
+	for i := 0; i < n; i++ {
+		_, err = w.Write(newline)
+		if err == nil {
+			_, err = w.Write(<-c.send)
+		}
+		if err != nil {
+			return
+		}
+	}
+
+	if err := w.Close(); err != nil {
+		return
 	}
 }
