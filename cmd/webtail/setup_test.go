@@ -1,11 +1,12 @@
-package main
+package main_test
 
 import (
-	"errors"
 	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
+	cmd "github.com/LeKovr/webtail/cmd/webtail"
 )
 
 func TestRun(t *testing.T) {
@@ -24,8 +25,10 @@ func TestRun(t *testing.T) {
 	}
 	for _, tt := range tests {
 		os.Args = append([]string{a[0]}, tt.args...)
+
 		var c int
-		run(func(code int) { c = code })
+
+		cmd.Run(func(code int) { c = code })
 		assert.Equal(t, tt.code, c, tt.name)
 	}
 
@@ -34,19 +37,18 @@ func TestRun(t *testing.T) {
 }
 
 func TestSetupConfig(t *testing.T) {
-	cfg, err := setupConfig("--debug")
+	cfg, err := cmd.SetupConfig("--debug")
 	assert.NoError(t, err)
 	assert.NotNil(t, cfg)
 }
 
 func TestFileServer(t *testing.T) {
-	fs := fileserver("")
+	fs := cmd.FileServer("")
 	assert.NotNil(t, fs)
-	fs = fileserver("/tmp")
+	fs = cmd.FileServer("/tmp")
 	assert.NotNil(t, fs)
 }
 func TestSetupLog(t *testing.T) {
-
 	tests := []struct {
 		name     string
 		debug    bool
@@ -56,15 +58,18 @@ func TestSetupLog(t *testing.T) {
 		{"NoDebug", false, 1},
 	}
 	for _, tt := range tests {
-		l := setupLog(tt.debug)
+		l := cmd.SetupLog(tt.debug)
 		assert.NotNil(t, l)
 	}
-
 }
 
+/*
 func TestShutdown(t *testing.T) {
 	err := errors.New("unknown")
+
 	var c int
+
 	shutdown(func(code int) { c = code }, err)
 	assert.Equal(t, 1, c)
 }
+*/

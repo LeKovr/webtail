@@ -9,7 +9,7 @@ SHELL          = /bin/sh
 
 GO            ?= go
 # not supported in BusyBox v1.26.2
-SOURCES        = *.go cmd/webtail/*.go
+SOURCES        = $(shell find . -maxdepth 3 -mindepth 1 -name '*.go'  -printf '%p\n')
 
 BUILD_DATE    ?= $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
 VCS_REF       ?= $(shell git rev-parse --short HEAD)
@@ -18,7 +18,7 @@ GOLANG_VERSION = 1.15.5-alpine3.12
 
 OS            ?= linux
 ARCH          ?= amd64
-ALLARCH       ?= "linux/amd64 linux/386 darwin/386"
+ALLARCH       ?= "linux/amd64 linux/386 darwin/amd64"
 DIRDIST       ?= dist
 
 # -----------------------------------------------------------------------------

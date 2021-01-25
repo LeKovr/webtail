@@ -12,17 +12,6 @@ import (
 	"github.com/nxadm/tail"
 )
 
-// Config defines local application flags
-type Config struct {
-	Root        string `long:"root"  default:"log/"  description:"Root directory for log files"`
-	Bytes       int64  `long:"bytes" default:"5000"  description:"tail from the last Nth location"`
-	Lines       int    `long:"lines" default:"100"   description:"keep N old lines for new consumers"`
-	MaxLineSize int    `long:"split" default:"180"   description:"split line if longer"`
-	ListCache   int    `long:"cache" default:"2"      description:"Time to cache file listing (sec)"`
-	Poll        bool   `long:"poll"  description:"use polling, instead of inotify"`
-	Trace       bool   `long:"trace" description:"trace worker channels"`
-}
-
 type tailer struct {
 	// Store for last Config.Lines lines
 	Buffer [][]byte
@@ -46,13 +35,13 @@ type IndexItemAttrStore map[string]*IndexItemAttr
 // TailHub holds Worker hub operations
 type TailHub struct {
 	Log     log.Logger
-	Config  Config
+	Config  *Config
 	workers map[string]*tailer
 	index   IndexItemAttrStore
 }
 
 // NewTailHub creates tailer hub
-func NewTailHub(logger log.Logger, cfg Config) (*TailHub, error) {
+func NewTailHub(logger log.Logger, cfg *Config) (*TailHub, error) {
 	_, err := os.Stat(cfg.Root)
 	if err != nil {
 		return nil, err
@@ -106,7 +95,6 @@ func (wh *TailHub) TraceEnabled() bool {
 
 // TailRun runs tail worker
 func (wh *TailHub) TailRun(channel string, out chan *WorkerMessage) error {
-
 	config := tail.Config{
 		Follow: true,
 		ReOpen: true,
@@ -171,9 +159,11 @@ func (wh *TailHub) Append(channel string, data []byte) bool {
 	buf := wh.workers[channel].Buffer
 
 	if len(buf) == wh.Config.Lines {
+		// drop oldest line if buffer is full
 		buf = buf[1:]
 	}
-	wh.workers[channel].Buffer = append(buf, data)
+	buf = append(buf, data)
+	wh.workers[channel].Buffer = buf
 	return true
 }
 
@@ -195,16 +185,13 @@ func (wh *TailHub) Update(msg *IndexItemEvent) {
 }
 
 func (wh *TailHub) worker(tf *tail.Tail, channel string, out chan *WorkerMessage, unregister chan bool) {
-
 	wh.Log.Printf("debug: worker for channel %s started", channel)
 	for {
 		select {
 		case line := <-tf.Lines:
-			//wh.Log.Printf("debug: got line for channel %s", channel)
-
 			out <- &WorkerMessage{Channel: channel, Data: line.Text}
 		case <-unregister:
-			err := tf.Stop() //Cleanup()
+			err := tf.Stop() // Cleanup()
 			if err != nil {
 				wh.Log.Printf("warn: worker for channel %s stopped with error %v", channel, err)
 			} else {
@@ -252,16 +239,16 @@ func (wh *TailHub) indexLoad(out chan *IndexItemEvent, lastmod time.Time) {
 	wh.Log.Print("debug: ============== indexLoad stop")
 }
 
-func (wh *TailHub) indexUpdateFile(out chan *IndexItemEvent, path string) {
+func (wh *TailHub) indexUpdateFile(out chan *IndexItemEvent, filePath string) {
 	dir := strings.TrimSuffix(wh.Config.Root, "/")
-	p := strings.TrimPrefix(path, dir+"/")
+	p := strings.TrimPrefix(filePath, dir+"/")
 
-	f, err := os.Stat(path)
+	f, err := os.Stat(filePath)
 	if err != nil {
 		if os.IsNotExist(err) {
 			out <- &IndexItemEvent{Name: p, Deleted: true}
 		} else {
-			wh.Log.Printf("error: cannot get stat for file %s with error %v", path, err)
+			wh.Log.Printf("error: cannot get stat for file %s with error %v", filePath, err)
 		}
 	}
 

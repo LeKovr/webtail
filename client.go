@@ -30,17 +30,6 @@ const (
 	maxMessageSize = 512
 )
 
-var (
-	newline = []byte{'\n'}
-	space   = []byte{' '}
-)
-
-var upgrader = websocket.Upgrader{
-	ReadBufferSize:  1024,
-	WriteBufferSize: 1024,
-	CheckOrigin:     func(r *http.Request) bool { return true },
-}
-
 // Client is a middleman between the websocket connection and the hub.
 type Client struct {
 	hub *ClientHub
@@ -51,6 +40,11 @@ type Client struct {
 	// Buffered channel of outbound messages.
 	send chan []byte
 }
+
+const (
+	newline = "\n"
+	space   = " "
+)
 
 // readPump pumps messages from the websocket connection to the hub.
 //
@@ -64,10 +58,12 @@ func (c *Client) readPump() {
 	}()
 	c.conn.SetReadLimit(maxMessageSize)
 	err := c.conn.SetReadDeadline(time.Now().Add(pongWait))
+
 	if err != nil {
 		log.Printf("warn: SetReadDeadline: %v", err)
 		return
 	}
+
 	c.conn.SetPongHandler(func(string) error { return c.conn.SetReadDeadline(time.Now().Add(pongWait)) })
 	for {
 		_, message, err := c.conn.ReadMessage()
@@ -77,7 +73,7 @@ func (c *Client) readPump() {
 			}
 			break
 		}
-		message = bytes.TrimSpace(bytes.Replace(message, newline, space, -1))
+		message = bytes.TrimSpace(bytes.ReplaceAll(message, []byte(newline), []byte(space)))
 		c.hub.broadcast <- &Message{Client: c, Message: message}
 	}
 }
@@ -138,7 +134,7 @@ func (c *Client) sendMesage(message []byte) {
 	// Add queued chat messages to the current websocket message.
 	n := len(c.send)
 	for i := 0; i < n; i++ {
-		_, err = w.Write(newline)
+		_, err = w.Write([]byte(newline))
 		if err == nil {
 			_, err = w.Write(<-c.send)
 		}
@@ -149,5 +145,13 @@ func (c *Client) sendMesage(message []byte) {
 
 	if err := w.Close(); err != nil {
 		return
+	}
+}
+
+func upgrader(rbs, wbs int) websocket.Upgrader {
+	return websocket.Upgrader{
+		ReadBufferSize:  rbs,
+		WriteBufferSize: wbs,
+		CheckOrigin:     func(r *http.Request) bool { return true },
 	}
 }

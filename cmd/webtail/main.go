@@ -14,5 +14,5 @@ var version = "0.0-dev"
 
 func main() {
 	log.Printf("WebTail %s. Tail (log)files via web.", version)
-	run(os.Exit)
+	Run(os.Exit)
 }

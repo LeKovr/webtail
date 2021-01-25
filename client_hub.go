@@ -8,16 +8,21 @@ import (
 	"github.com/LeKovr/go-base/log"
 )
 
-type messageIn struct {
+// InMessage holds incoming client request
+type InMessage struct {
 	Type    string `json:"type"`
 	Channel string `json:"channel,omitempty"`
 }
-type messageOut struct {
+
+// TailMessage holds outgoing file tail row
+type TailMessage struct {
 	Type    string `json:"type"`
 	Channel string `json:"channel,omitempty"`
 	Data    string `json:"data,omitempty"`
 }
-type messageStats struct {
+
+// StatsMessage holds outgoing app stats
+type StatsMessage struct {
 	Type string            `json:"type"`
 	Data map[string]uint64 `json:"data,omitempty"`
 }
@@ -30,13 +35,14 @@ type IndexItemEvent struct {
 	Deleted bool      `json:"deleted"`
 }
 
-type messageIndex struct {
+// IndexMessage holds outgoing message item for file index
+type IndexMessage struct {
 	Type  string         `json:"type"`
 	Data  IndexItemEvent `json:"data"`
 	Error string         `json:"error,omitempty"`
 }
 
-// Message holds data received from client
+// Message holds received message and sender
 type Message struct {
 	Client  *Client
 	Message []byte
@@ -45,7 +51,7 @@ type Message struct {
 // WorkerMessage holds messages from workers
 type WorkerMessage struct {
 	Channel string
-	Data    string //[]byte
+	Data    string // []byte
 }
 
 // subscribers holds clients subscribed on channel
@@ -124,10 +130,10 @@ func (h *ClientHub) run() {
 
 func (h *ClientHub) fromClient(msg *Message) {
 	var data []byte
-	in := messageIn{}
+	in := InMessage{}
 	err := json.Unmarshal(msg.Message, &in)
 	if err != nil {
-		data, _ = json.Marshal(messageOut{Type: "error", Data: "parse error"})
+		data, _ = json.Marshal(TailMessage{Type: "error", Data: "parse error"})
 		h.send(msg.Client, data)
 		return
 	}
@@ -139,19 +145,19 @@ func (h *ClientHub) fromClient(msg *Message) {
 		// проверить, что клиент подписан
 		if !h.wh.WorkerExists(in.Channel) {
 			// unknown producer
-			data, _ = json.Marshal(messageOut{Type: "error", Data: "unknown channel", Channel: in.Channel})
+			data, _ = json.Marshal(TailMessage{Type: "error", Data: "unknown channel", Channel: in.Channel})
 		} else if _, ok := h.subscribers[in.Channel][msg.Client]; !ok {
 			// no subscriber
-			data, _ = json.Marshal(messageOut{Type: "error", Data: "not subscribed", Channel: in.Channel})
+			data, _ = json.Marshal(TailMessage{Type: "error", Data: "not subscribed", Channel: in.Channel})
 		} else {
 			// удалить подписку
-			data, _ = json.Marshal(messageOut{Type: "detach", Channel: in.Channel})
+			data, _ = json.Marshal(TailMessage{Type: "detach", Channel: in.Channel})
 			h.unsubscribe(in.Channel, msg.Client)
 		}
 
 	case "stats":
 		// вернуть массив счетчиков подписок на каналы
-		data, _ = json.Marshal(messageStats{Type: "stats", Data: h.stats})
+		data, _ = json.Marshal(StatsMessage{Type: "stats", Data: h.stats})
 
 	case "trace":
 		// включить/выключить трассировку
@@ -162,17 +168,16 @@ func (h *ClientHub) fromClient(msg *Message) {
 	}
 }
 
-// process message from worker
-func (h *ClientHub) fromWorker(msg *WorkerMessage) bool {
-
+// fromWorker processes message from worker
+func (h *ClientHub) fromWorker(msg *WorkerMessage) {
 	if h.wh.TraceEnabled() {
 		h.log.Printf("debug: Trace from Worker: (%+v)", msg)
 	}
 
-	data, _ := json.Marshal(messageOut{Type: "log", Data: msg.Data})
+	data, _ := json.Marshal(TailMessage{Type: "log", Data: msg.Data})
 
 	if !h.wh.Append(msg.Channel, data) {
-		return true
+		return
 	}
 
 	clients := h.subscribers[msg.Channel]
@@ -180,17 +185,15 @@ func (h *ClientHub) fromWorker(msg *WorkerMessage) bool {
 	for client := range clients {
 		h.send(client, data)
 	}
-	return true
 }
 
-// process message from worker
+// process message from indexer
 func (h *ClientHub) fromIndexer(msg *IndexItemEvent) {
-
 	if h.wh.TraceEnabled() {
 		h.log.Printf("debug: Trace from Indexer: (%+v)", msg)
 	}
 
-	data, _ := json.Marshal(messageIndex{Type: "index", Data: *msg})
+	data, _ := json.Marshal(IndexMessage{Type: "index", Data: *msg})
 
 	h.wh.Update(msg)
 
@@ -205,7 +208,7 @@ func (h *ClientHub) attach(channel string, client *Client) (data []byte) {
 	var err error
 	if !h.wh.ChannelExists(channel) {
 		// проверить что путь зарегистрирован
-		data, _ = json.Marshal(messageOut{Type: "error", Data: "unknown channel", Channel: channel})
+		data, _ = json.Marshal(TailMessage{Type: "error", Data: "unknown channel", Channel: channel})
 		return
 	}
 	if !h.wh.WorkerExists(channel) {
@@ -217,18 +220,18 @@ func (h *ClientHub) attach(channel string, client *Client) (data []byte) {
 		}
 		if err != nil {
 			h.log.Printf("warn: worker create error: %+v", err)
-			data, _ = json.Marshal(messageOut{Type: "error", Data: "worker create error"})
+			data, _ = json.Marshal(TailMessage{Type: "error", Data: "worker create error"})
 			return
 		}
 		h.subscribers[channel] = make(subscribers)
 	} else if _, ok := h.subscribers[channel][client]; ok {
 		// клиент уже подписан - ответить "уже подписан" и выйти
-		data, _ = json.Marshal(messageOut{Type: "error", Data: "attached already", Channel: channel})
+		data, _ = json.Marshal(TailMessage{Type: "error", Data: "attached already", Channel: channel})
 		return
 	}
 	// Confirm attach
 	// not via data because have to be first in response
-	datac, _ := json.Marshal(messageOut{Type: "attach", Channel: channel})
+	datac, _ := json.Marshal(TailMessage{Type: "attach", Channel: channel})
 	if h.send(client, datac) {
 		if h.sendReply(channel, client) {
 			// добавить клиента в подписчики
@@ -236,11 +239,12 @@ func (h *ClientHub) attach(channel string, client *Client) (data []byte) {
 			h.stats[channel]++
 		}
 	}
-	return
+	// 'data' added for linter which says:
+	// "naked return in func `attach` with 36 lines of code (nakedret)""
+	return data
 }
 
 func (h *ClientHub) sendReply(ch string, cl *Client) bool {
-
 	if ch == "" {
 		// отправить клиенту список каналов
 		istore := h.wh.Index()
@@ -252,7 +256,7 @@ func (h *ClientHub) sendReply(ch string, cl *Client) bool {
 		sort.Strings(keys)
 
 		for _, v := range keys {
-			idx := &messageIndex{
+			idx := &IndexMessage{
 				Type: "index",
 				Data: IndexItemEvent{
 					Name:    v,
@@ -265,7 +269,6 @@ func (h *ClientHub) sendReply(ch string, cl *Client) bool {
 				return false
 			}
 		}
-
 	} else {
 		// отправить клиенту текущий буфер
 		for _, item := range h.wh.Buffer(ch) {
@@ -278,7 +281,6 @@ func (h *ClientHub) sendReply(ch string, cl *Client) bool {
 }
 
 func (h *ClientHub) send(client *Client, data []byte) bool {
-
 	h.log.Printf("debug: Send reply: %v", string(data))
 	select {
 	case client.send <- data:
@@ -299,7 +301,6 @@ func (h *ClientHub) remove(client *Client) {
 	}
 	close(client.send)
 	delete(h.clients, client)
-
 }
 
 func (h *ClientHub) unsubscribe(k string, client *Client) {

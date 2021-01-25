@@ -1,4 +1,4 @@
-package webtail
+package webtail_test
 
 import (
 	"bytes"
@@ -12,21 +12,31 @@ import (
 	"time"
 
 	mapper "github.com/birkirb/loggers-mapper-logrus"
+	"github.com/gorilla/websocket"
 	"github.com/jessevdk/go-flags"
 	"github.com/sirupsen/logrus"
 	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 
-	"github.com/gorilla/websocket"
+	"github.com/LeKovr/webtail"
 )
 
-//var upgrader = websocket.Upgrader{}
+// var upgrader = websocket.Upgrader{}
+
+const (
+	newline = "\n"
+
+	pongWait = 60 * time.Second
+
+	// Send pings to peer with this period. Must be less than pongWait.
+	pingPeriod = (pongWait * 9) / 10
+)
 
 type ServerSuite struct {
 	suite.Suite
-	cfg  Config
-	srv  *Service
+	cfg  webtail.Config
+	srv  *webtail.Service
 	hook *test.Hook
 }
 
@@ -46,12 +56,11 @@ func (ss *ServerSuite) SetupSuite() {
 	if testing.Verbose() {
 		l.SetLevel(logrus.DebugLevel)
 	}
-	log := mapper.NewLogger(l)
 
 	hook.Reset()
 	ss.cfg.Root = "testdata/"
 	ss.cfg.Trace = testing.Verbose()
-	ss.srv, err = New(log, ss.cfg)
+	ss.srv, err = webtail.New(mapper.NewLogger(l), &ss.cfg)
 	require.Nil(ss.T(), err)
 	go ss.srv.Run()
 }
@@ -78,7 +87,7 @@ type received struct {
 
 func (ss *ServerSuite) TestIndex() {
 	ss.hook.Reset()
-	s := httptest.NewServer(ss.srv) //http.HandlerFunc(ss.srv.Handle))
+	s := httptest.NewServer(ss.srv) // http.HandlerFunc(ss.srv.Handle))
 	defer s.Close()
 	// Convert http://127.0.0.1 to ws://127.0.0.
 	u := "ws" + strings.TrimPrefix(s.URL, "http")
@@ -88,16 +97,16 @@ func (ss *ServerSuite) TestIndex() {
 	require.Nil(ss.T(), err)
 	defer ws.Close()
 
-	err = ws.WriteJSON(&messageOut{Type: "attach"}) //, Channel: "#"})
+	err = ws.WriteJSON(&webtail.TailMessage{Type: "attach"}) // , Channel: "#"})
 	require.Nil(ss.T(), err)
 
-	err = ws.WriteJSON(&messageOut{Type: "attach", Channel: "file.log"})
+	err = ws.WriteJSON(&webtail.TailMessage{Type: "attach", Channel: "file.log"})
 	require.Nil(ss.T(), err)
-	err = ws.WriteJSON(&messageOut{Type: "attach", Channel: "file.log"})
+	err = ws.WriteJSON(&webtail.TailMessage{Type: "attach", Channel: "file.log"})
 	require.Nil(ss.T(), err)
-	err = ws.WriteJSON(&messageOut{Type: "trace"})
+	err = ws.WriteJSON(&webtail.TailMessage{Type: "trace"})
 	require.Nil(ss.T(), err)
-	err = ws.WriteJSON(&messageOut{Type: "detach", Channel: "file.log"})
+	err = ws.WriteJSON(&webtail.TailMessage{Type: "detach", Channel: "file.log"})
 	require.Nil(ss.T(), err)
 
 	start := time.Now()
@@ -116,10 +125,10 @@ func (ss *ServerSuite) TestIndex() {
 				}
 				return
 			}
-			result := bytes.Split(msg, newline)
+			result := bytes.Split(msg, []byte(newline))
 			for i := range result {
 				log.Println(">>>>", string(result[i]))
-				x := received{} //Out{}
+				x := received{} // Out{}
 				err := json.Unmarshal(result[i], &x)
 				require.Nil(ss.T(), err)
 				log.Printf("==>> %s\n", x.Data)
@@ -133,21 +142,20 @@ func (ss *ServerSuite) TestIndex() {
 			}
 		}
 	}()
-
-	ticker := time.NewTicker(time.Second)
+	ticker := time.NewTicker(time.Second + pingPeriod)
 	defer ticker.Stop()
 	// err := c.WriteJSON(&message{Type: "stats", Channel: t.String()})
 	//	for {
 	select {
 	case <-ticker.C:
-		wsclose(ws, done, cnt)
+		wsclose(ws, done)
 	//	break //	return
 	case <-interrupt:
-		// log.Println("interrupt")
-		wsclose(ws, done, cnt)
+		log.Println("interrupt")
+		wsclose(ws, done)
 		//	break //	return
 	}
-	//break
+	// break
 	//	}
 
 	ss.printLogs()
@@ -159,8 +167,7 @@ func (ss *ServerSuite) TestIndex() {
 	require.Nil(ss.T(), nil)
 }
 
-func wsclose(c *websocket.Conn, done chan struct{}, cnt int) {
-
+func wsclose(c *websocket.Conn, done chan struct{}) {
 	// log.Printf("Received %d messages", cnt)
 
 	// To cleanly close a connection, a client should send a close
@@ -177,7 +184,6 @@ func wsclose(c *websocket.Conn, done chan struct{}, cnt int) {
 	case <-time.After(time.Second):
 	}
 	c.Close()
-
 }
 
 func TestSuite(t *testing.T) {

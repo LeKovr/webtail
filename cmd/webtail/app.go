@@ -16,33 +16,35 @@ type Config struct {
 	Tail webtail.Config `group:"Webtail Options"`
 }
 
-// run app and exit via given exitFunc
-func run(exitFunc func(code int)) {
-
+// Run app and exit via given exitFunc
+func Run(exitFunc func(code int)) {
 	var err error
+
 	var cfg *Config
+
 	defer func() { shutdown(exitFunc, err) }()
-	cfg, err = setupConfig()
+	cfg, err = SetupConfig()
 	if err != nil || cfg.Version {
 		return
 	}
-	lg := setupLog(cfg.LogLevel == "debug" || cfg.Debug)
+	lg := SetupLog(cfg.LogLevel == "debug" || cfg.Debug)
 
 	var wt *webtail.Service
-	wt, err = webtail.New(lg, cfg.Tail)
+	wt, err = webtail.New(lg, &cfg.Tail)
 	if err != nil {
 		return
 	}
 	go wt.Run()
 
-	http.Handle("/", fileserver(cfg.HTML))
+	http.Handle("/", FileServer(cfg.HTML))
 	http.Handle("/tail", wt)
 	http.HandleFunc("/api/stats", stats_api.Handler)
 	lg.Print("Listen: ", cfg.Listen)
 	err = http.ListenAndServe(cfg.Listen, nil)
 }
 
-func fileserver(path string) http.Handler {
+// FileServer return embedded or given fs
+func FileServer(path string) http.Handler {
 	if path != "" {
 		return http.FileServer(http.Dir(path))
 	}
@@ -53,14 +55,15 @@ func fileserver(path string) http.Handler {
 func shutdown(exitFunc func(code int), e error) {
 	if e != nil {
 		var code int
+
 		switch e {
 		case ErrGotHelp:
 			code = 3
 		case ErrBadArgs:
 			code = 2
 		default:
-			code = 1
 			log.Printf("Run error: %+v", e)
+			code = 1
 		}
 		exitFunc(code)
 	}
