@@ -2,11 +2,13 @@ package main
 
 import (
 	"errors"
-	baselog "log"
-	"os"
 
-	"github.com/LeKovr/go-base/log"
-	"github.com/comail/colog"
+	"github.com/go-logr/logr"
+	"github.com/go-logr/zapr"
+	"github.com/mattn/go-colorable"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
+
 	"github.com/jessevdk/go-flags"
 )
 
@@ -49,16 +51,20 @@ func SetupConfig(args ...string) (*Config, error) {
 }
 
 // SetupLog creates logger
-func SetupLog(withDebug bool) log.Logger {
-	var ll colog.Level
+func SetupLog(withDebug bool) logr.Logger {
+	aa := zap.NewDevelopmentEncoderConfig()
+	aa.EncodeLevel = zapcore.CapitalColorLevelEncoder
+	zapLog := zap.New(zapcore.NewCore(
+		zapcore.NewConsoleEncoder(aa),
+		zapcore.AddSync(colorable.NewColorableStdout()),
+		zapcore.DebugLevel,
+	),
+		zap.AddCaller(),
+	)
+	log := zapr.NewLogger(zapLog)
+
 	if withDebug {
-		ll = colog.LDebug
-	} else {
-		ll = colog.LInfo
+		log = log.V(1)
 	}
-	cl := colog.NewCoLog(os.Stderr, "", baselog.Lshortfile|baselog.Ldate|baselog.Ltime)
-	cl.SetMinLevel(ll)
-	cl.SetDefaultLevel(ll)
-	lg := cl.NewLogger()
-	return lg
+	return log
 }

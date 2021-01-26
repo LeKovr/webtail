@@ -35,11 +35,12 @@ func Run(exitFunc func(code int)) {
 		return
 	}
 	go wt.Run()
+	defer wt.Close()
 
 	http.Handle("/", FileServer(cfg.HTML))
 	http.Handle("/tail", wt)
 	http.HandleFunc("/api/stats", stats_api.Handler)
-	lg.Print("Listen: ", cfg.Listen)
+	lg.Info("Listen", "addr", cfg.Listen)
 	err = http.ListenAndServe(cfg.Listen, nil)
 }
 

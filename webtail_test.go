@@ -11,13 +11,11 @@ import (
 	"testing"
 	"time"
 
-	mapper "github.com/birkirb/loggers-mapper-logrus"
 	"github.com/gorilla/websocket"
 	"github.com/jessevdk/go-flags"
-	"github.com/sirupsen/logrus"
-	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+	"github.com/wojas/genericr"
 
 	"github.com/LeKovr/webtail"
 )
@@ -35,9 +33,7 @@ const (
 
 type ServerSuite struct {
 	suite.Suite
-	cfg  webtail.Config
-	srv  *webtail.Service
-	hook *test.Hook
+	cfg webtail.Config
 }
 
 const (
@@ -51,43 +47,36 @@ func (ss *ServerSuite) SetupSuite() {
 	_, err := p.ParseArgs([]string{})
 	require.NoError(ss.T(), err)
 
-	l, hook := test.NewNullLogger()
-	ss.hook = hook
-	if testing.Verbose() {
-		l.SetLevel(logrus.DebugLevel)
-	}
-
-	hook.Reset()
-	ss.cfg.Root = "testdata/"
-	ss.cfg.Trace = testing.Verbose()
-	ss.srv, err = webtail.New(mapper.NewLogger(l), &ss.cfg)
-	require.Nil(ss.T(), err)
-	go ss.srv.Run()
+	ss.cfg.Root = "testdata"
+	ss.cfg.Trace = true // testing.Verbose()
+	ss.cfg.Bytes = 20
 }
 
-/*
-http.Handle("/tail", wt)
-
-w := httptest.NewRecorder()
-req, _ := http.NewRequest(tt.method, tt.url, tt.reader)
-if tt.ctype != "" {
-		req.Header.Set("Content-Type", tt.ctype)
-}
-srv.ServeHTTP(w, req)
-*/
 func (ss *ServerSuite) TearDownSuite() {
-	os.Remove(ss.cfg.Root + RootFile)
+	//	os.Remove(ss.cfg.Root + RootFile)
 	os.Remove(ss.cfg.Root + SubFile)
 }
 
 type received struct {
-	Type string          `json:"type"`
-	Data json.RawMessage `json:"data,omitempty"`
+	Type    string          `json:"type"`
+	Channel string          `json:"channel,omitempty"`
+	Data    json.RawMessage `json:"data,omitempty"`
 }
 
 func (ss *ServerSuite) TestIndex() {
-	ss.hook.Reset()
-	s := httptest.NewServer(ss.srv) // http.HandlerFunc(ss.srv.Handle))
+	logger := genericr.New(func(e genericr.Entry) {
+		//		if testing.Verbose() {
+		//			ss.printLogs(recorded)
+		//		}
+		ss.T().Log(e.String())
+		// e.FieldsMap()
+		//fmt.Println(e.String())
+	})
+	srv, err := webtail.New(logger, &ss.cfg)
+	require.NoError(ss.T(), err)
+	go srv.Run()
+	defer srv.Close()
+	s := httptest.NewServer(srv) // http.HandlerFunc(ss.srv.Handle))
 	defer s.Close()
 	// Convert http://127.0.0.1 to ws://127.0.0.
 	u := "ws" + strings.TrimPrefix(s.URL, "http")
@@ -97,74 +86,121 @@ func (ss *ServerSuite) TestIndex() {
 	require.Nil(ss.T(), err)
 	defer ws.Close()
 
-	err = ws.WriteJSON(&webtail.TailMessage{Type: "attach"}) // , Channel: "#"})
-	require.Nil(ss.T(), err)
-
-	err = ws.WriteJSON(&webtail.TailMessage{Type: "attach", Channel: "file.log"})
-	require.Nil(ss.T(), err)
-	err = ws.WriteJSON(&webtail.TailMessage{Type: "attach", Channel: "file.log"})
-	require.Nil(ss.T(), err)
-	err = ws.WriteJSON(&webtail.TailMessage{Type: "trace"})
-	require.Nil(ss.T(), err)
-	err = ws.WriteJSON(&webtail.TailMessage{Type: "detach", Channel: "file.log"})
-	require.Nil(ss.T(), err)
-
-	start := time.Now()
-
 	done := make(chan struct{})
-	cnt := 0
+	feedBackChan := make(chan struct{}, 3)
 	interrupt := make(chan os.Signal, 1)
-	go func() {
-		//      defer c.Close()
-		defer close(done)
-		for {
-			_, msg, err := ws.ReadMessage()
-			if err != nil {
-				if !websocket.IsCloseError(err, websocket.CloseNormalClosure) {
-					require.Nil(ss.T(), err)
-				}
-				return
-			}
-			result := bytes.Split(msg, []byte(newline))
-			for i := range result {
-				log.Println(">>>>", string(result[i]))
-				x := received{} // Out{}
-				err := json.Unmarshal(result[i], &x)
-				require.Nil(ss.T(), err)
-				log.Printf("==>> %s\n", x.Data)
-			}
-			cnt += len(result)
-			log.Printf("recv: %d", cnt)
-			if cnt == 9 {
-				log.Printf("%d messages received for %s", cnt, time.Since(start).String())
-				interrupt <- os.Interrupt
-				return
-			}
-		}
-	}()
-	ticker := time.NewTicker(time.Second + pingPeriod)
+	go ss.listenWS(ws, done, feedBackChan, interrupt)
+
+	//err = ws.WriteJSON(&webtail.InMessage{Type: "detach"})
+	//require.Nil(ss.T(), err)
+
+	err = ws.WriteJSON(&webtail.InMessage{Type: "attach"}) // , Channel: "#"})
+	require.NoError(ss.T(), err)
+
+	waitSync(feedBackChan) // wait for indexer started
+	testFile := ss.cfg.Root + "/" + RootFile
+	fmt.Println("file:", testFile)
+
+	f, err := os.Create(testFile)
+	require.NoError(ss.T(), err)
+	_, err = f.WriteString("test log row zero\ntest log row one\ntest log row two\n")
+	require.NoError(ss.T(), err)
+	f.Sync()
+	f.Close()
+
+	err = ws.WriteJSON(&webtail.InMessage{Type: "trace"})
+	require.Nil(ss.T(), err)
+	err = ws.WriteJSON(&webtail.InMessage{Type: "trace", Channel: "on"})
+	require.Nil(ss.T(), err)
+
+	waitSync(feedBackChan) // wait for RootFile create
+	waitSync(feedBackChan) // wait for RootFile write
+
+	err = ws.WriteJSON(&webtail.InMessage{Type: "attach", Channel: RootFile})
+	require.Nil(ss.T(), err)
+	err = ws.WriteJSON(&webtail.InMessage{Type: "attach", Channel: RootFile})
+	require.Nil(ss.T(), err)
+
+	f, err = os.OpenFile(testFile, os.O_APPEND|os.O_WRONLY, 0644)
+	_, err = f.WriteString("test log row three\n")
+	require.NoError(ss.T(), err)
+	f.Sync()
+	f.Close()
+	waitSync(feedBackChan) // wait for RootFile write
+	os.Remove(testFile)
+
+	err = ws.WriteJSON(&webtail.InMessage{Type: "detach", Channel: RootFile})
+	require.Nil(ss.T(), err)
+
+	err = ws.WriteJSON(&webtail.InMessage{Type: "detach", Channel: RootFile})
+	require.Nil(ss.T(), err)
+
+	err = ws.WriteJSON(&webtail.InMessage{Type: "stats"})
+	require.NoError(ss.T(), err)
+
+	err = ws.WriteJSON(&webtail.InMessage{Type: "detach"}) // , Channel: "#"})
+	require.NoError(ss.T(), err)
+
+	//	start := time.Now()
+	fmt.Println("file3")
+
+	ticker := time.NewTicker(time.Duration(2) * time.Second)
 	defer ticker.Stop()
-	// err := c.WriteJSON(&message{Type: "stats", Channel: t.String()})
-	//	for {
+
+	log.Println("final")
 	select {
 	case <-ticker.C:
+		log.Println("by timout")
 		wsclose(ws, done)
-	//	break //	return
 	case <-interrupt:
-		log.Println("interrupt")
+		log.Println("by flag")
 		wsclose(ws, done)
-		//	break //	return
 	}
-	// break
-	//	}
+}
 
-	ss.printLogs()
+func (ss *ServerSuite) listenWS(ws *websocket.Conn, done, back chan struct{}, interrupt chan os.Signal) {
+	//      defer c.Close()
+	defer close(done)
+	cnt := 0
 
-	//  require.NotNil(ss.T(), err)
-	//  httpErr, ok := err.(interface{ Status() int })
-	//  assert.True(ss.T(), ok)
-	//  assert.Equal(ss.T(), http.StatusBadRequest, httpErr.Status())
-	require.Nil(ss.T(), nil)
+	for {
+		_, msg, err := ws.ReadMessage()
+		if err != nil {
+			//	if !websocket.IsCloseError(err, websocket.CloseNormalClosure) {
+			//		require.Nil(ss.T(), err)
+			//	}
+			return
+		}
+		result := bytes.Split(msg, []byte(newline))
+		for i := range result {
+			// log.Println(">>>>", string(result[i]))
+			x := received{} // Out{}
+			err := json.Unmarshal(result[i], &x)
+			require.Nil(ss.T(), err)
+			fmt.Printf("==>> %s\n", x) //.Data)
+			if x.Type == "attach" && x.Channel == "" {
+				fmt.Println("--------------->>attach index")
+				back <- struct{}{}
+			} else if x.Type == "index" {
+				//fmt.Println(">>updated index")
+				file := &webtail.IndexItemEvent{}
+				err := json.Unmarshal(x.Data, &file)
+				require.Nil(ss.T(), err)
+				fmt.Println("--------------->>updated index for " + file.Name)
+				if file.Name == RootFile {
+					back <- struct{}{}
+				}
+			}
+
+		}
+		cnt += len(result)
+		log.Printf("recv: %d", cnt)
+		if cnt == 12 {
+			// log.Printf("%d messages received for %s", cnt, time.Since(start).String())
+			interrupt <- os.Interrupt
+			return
+		}
+	}
 }
 
 func wsclose(c *websocket.Conn, done chan struct{}) {
@@ -174,8 +210,8 @@ func wsclose(c *websocket.Conn, done chan struct{}) {
 	// frame and wait for the server to close the connection.
 	err := c.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
 	if err != nil {
-		if !websocket.IsCloseError(err, websocket.CloseNormalClosure) {
-			log.Println("write close:", err)
+		if websocket.IsCloseError(err, websocket.CloseNormalClosure) {
+			err = nil // log.Println("write close:", err)
 		}
 		return
 	}
@@ -191,8 +227,24 @@ func TestSuite(t *testing.T) {
 	suite.Run(t, myTest)
 }
 
-func (ss *ServerSuite) printLogs() {
-	for _, e := range ss.hook.Entries {
-		fmt.Printf("ENT[%s]: %s\n", e.Level, e.Message)
+func waitSync(back chan struct{}) {
+
+	//	<-back
+	//	fmt.Println(">>>>>>>>>>>>>>> received message")
+
+	ticker1 := time.NewTicker(time.Duration(1) * time.Second)
+	defer ticker1.Stop()
+	//	for {
+	select {
+	case <-back:
+		fmt.Println("received message")
+		return
+	case <-ticker1.C:
+		fmt.Println("no message received")
+		return
+		//		default:
+		//			time.Sleep(time.Duration(5) * time.Millisecond)
 	}
+	//	}
+
 }

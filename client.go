@@ -9,10 +9,10 @@ package webtail
 
 import (
 	"bytes"
-	"log"
 	"net/http"
 	"time"
 
+	"github.com/go-logr/logr"
 	"github.com/gorilla/websocket"
 )
 
@@ -39,6 +39,8 @@ type Client struct {
 
 	// Buffered channel of outbound messages.
 	send chan []byte
+
+	log logr.Logger
 }
 
 const (
@@ -60,7 +62,7 @@ func (c *Client) readPump() {
 	err := c.conn.SetReadDeadline(time.Now().Add(pongWait))
 
 	if err != nil {
-		log.Printf("warn: SetReadDeadline: %v", err)
+		c.log.Error(err, "SetReadDeadline")
 		return
 	}
 
@@ -69,7 +71,7 @@ func (c *Client) readPump() {
 		_, message, err := c.conn.ReadMessage()
 		if err != nil {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway) {
-				log.Printf("error: %v", err)
+				c.log.Error(err, "UnexpectedCloseError")
 			}
 			break
 		}
@@ -94,7 +96,7 @@ func (c *Client) writePump() {
 		case message, ok := <-c.send:
 			err := c.conn.SetWriteDeadline(time.Now().Add(writeWait))
 			if err != nil {
-				log.Printf("warn: SetWriteDeadline: %v", err)
+				c.log.Error(err, "SetWriteDeadline")
 				return
 			}
 
@@ -102,7 +104,7 @@ func (c *Client) writePump() {
 				// The hub closed the channel.
 				err := c.conn.WriteMessage(websocket.CloseMessage, []byte{})
 				if err != nil {
-					log.Printf("warn: CloseMessage: %v", err)
+					c.log.Error(err, "Close socket")
 				}
 				return
 			}
@@ -122,12 +124,12 @@ func (c *Client) writePump() {
 func (c *Client) sendMesage(message []byte) {
 	w, err := c.conn.NextWriter(websocket.TextMessage)
 	if err != nil {
-		log.Printf("warn: NextWriter: %v", err)
+		c.log.Error(err, "NextWriter")
 		return
 	}
 	_, err = w.Write(message)
 	if err != nil {
-		log.Printf("warn: Write: %v", err)
+		c.log.Error(err, "Write")
 		return
 	}
 

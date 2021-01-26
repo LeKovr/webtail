@@ -3,7 +3,7 @@ package webtail
 import (
 	"net/http"
 
-	"github.com/LeKovr/go-base/log"
+	"github.com/go-logr/logr"
 )
 
 // Config defines local application flags
@@ -25,22 +25,27 @@ type Config struct {
 type Service struct {
 	cfg *Config
 	hub *ClientHub
-	lg  log.Logger
+	log logr.Logger
 }
 
 // New creates WebTail service
-func New(lg log.Logger, cfg *Config) (*Service, error) {
-	tail, err := NewTailHub(lg, cfg)
+func New(log logr.Logger, cfg *Config) (*Service, error) {
+	tail, err := NewTailHub(log, cfg)
 	if err != nil {
 		return nil, err
 	}
-	hub := newClientHub(lg, tail)
-	return &Service{cfg: cfg, hub: hub, lg: lg}, nil
+	hub := newClientHub(log, tail)
+	return &Service{cfg: cfg, hub: hub, log: log}, nil
 }
 
 // Run runs a message hub
 func (wt *Service) Run() {
-	wt.hub.run()
+	wt.hub.Run()
+}
+
+// Close stops a message hub
+func (wt *Service) Close() {
+	wt.hub.Close()
 }
 
 // Handle handles websocket requests from the peer
@@ -48,10 +53,15 @@ func (wt *Service) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	wsUpgrader := upgrader(wt.cfg.WSReadBufferSize, wt.cfg.WSWriteBufferSize)
 	conn, err := wsUpgrader.Upgrade(w, r, nil)
 	if err != nil {
-		wt.lg.Println(err)
+		wt.log.Error(err, "Upgrade connection")
 		return
 	}
-	client := &Client{hub: wt.hub, conn: conn, send: make(chan []byte, wt.cfg.ClientBufferSize)}
+	client := &Client{
+		hub:  wt.hub,
+		conn: conn,
+		send: make(chan []byte, wt.cfg.ClientBufferSize),
+		log:  wt.log,
+	}
 	client.hub.register <- client
 
 	// Allow collection of memory referenced by the caller by doing all work in
