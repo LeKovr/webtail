@@ -184,6 +184,13 @@ dc: docker-compose.yml
 ## Other
 #:
 
+# https://dev.to/koddr/how-to-update-version-s-cache-of-your-package-in-pkg-go-dev-39ij
+update-pkg-cache:
+	GOPROXY=https://proxy.golang.org GO111MODULE=on \
+	go get github.com/LeKovr/webtail@v0.44.0
+
+#	go get github.com/$(USER)/$(PACKAGE)@v$(VERSION)
+
 # This code handles group header and target comment with one or two lines only
 ## list Makefile targets
 ## (this is default target)

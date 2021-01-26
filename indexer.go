@@ -30,7 +30,7 @@ func (wh *TailHub) IndexerRun(out chan *IndexItemEvent, wg *sync.WaitGroup) {
 	go wh.bgIndexer(out, unregister, readyChan, wg)
 	<-readyChan
 	wh.indexLoad(time.Now())
-	wh.Log.Info("Indexer started")
+	wh.log.Info("Indexer started")
 }
 
 // Index returns index items
@@ -46,7 +46,7 @@ func (wh *TailHub) Update(msg *IndexItemEvent) {
 	}
 
 	if _, ok := wh.index[msg.Name]; ok {
-		wh.Log.Info("Deleting file from index", "filename", msg.Name)
+		wh.log.Info("Deleting file from index", "filename", msg.Name)
 		delete(wh.index, msg.Name)
 	}
 }
@@ -56,12 +56,12 @@ func (wh *TailHub) bgIndexer(out chan *IndexItemEvent, unregister chan bool, rea
 	wg.Add(1)
 	defer wg.Done()
 	notify := func(ev dirwatch.Event) {
-		wh.Log.Info("Handling file event", "event", ev)
+		wh.log.Info("Handling file event", "event", ev)
 		wh.indexUpdateFile(out, ev.Name)
 	}
 	logger := func(args ...interface{}) {
 		// data := args[1:]
-		wh.Log.Info("Dirwatch log") // args[0].(string)) //, "data", &data)
+		wh.log.Info("Dirwatch log") // args[0].(string)) //, "data", &data)
 	}
 	watcher := dirwatch.New(dirwatch.Notify(notify), dirwatch.Logger(logger))
 	defer watcher.Stop()
@@ -69,8 +69,7 @@ func (wh *TailHub) bgIndexer(out chan *IndexItemEvent, unregister chan bool, rea
 
 	readyChan <- struct{}{}
 	<-unregister
-	wh.Log.Info("Indexer stopped")
-
+	wh.log.Info("Indexer stopped")
 }
 
 func (wh *TailHub) indexLoad(lastmod time.Time) {
@@ -85,7 +84,7 @@ func (wh *TailHub) indexLoad(lastmod time.Time) {
 		return nil
 	})
 	if err != nil {
-		wh.Log.Error(err, "Path walk")
+		wh.log.Error(err, "Path walk")
 	}
 }
 
@@ -98,10 +97,9 @@ func (wh *TailHub) indexUpdateFile(out chan *IndexItemEvent, filePath string) {
 		if os.IsNotExist(err) {
 			out <- &IndexItemEvent{Name: p, Deleted: true}
 		} else {
-			wh.Log.Error(err, "Cannot get stat for file", "filepath", filePath)
+			wh.log.Error(err, "Cannot get stat for file", "filepath", filePath)
 		}
 	}
-
 	if !f.IsDir() {
 		out <- &IndexItemEvent{Name: p, ModTime: f.ModTime(), Size: f.Size()}
 	}

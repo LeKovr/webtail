@@ -22,10 +22,20 @@ type tailer struct {
 
 // TailHub holds Worker hub operations
 type TailHub struct {
-	Log     logr.Logger
+	log     logr.Logger
 	Config  *Config
 	workers map[string]*tailer
 	index   IndexItemAttrStore
+}
+
+// Tailer holds tailer worker data
+type Tailer struct {
+	tf         *tail.Tail
+	channel    string
+	out        chan *TailerMessage
+	unregister chan bool
+	readyChan  chan struct{}
+	log        logr.Logger
 }
 
 // NewTailHub creates tailer hub
@@ -43,7 +53,7 @@ func NewTailHub(logger logr.Logger, cfg *Config) (*TailHub, error) {
 	}
 	return &TailHub{
 		Config:  cfg,
-		Log:     logger,
+		log:     logger,
 		workers: make(map[string]*tailer),
 		index:   make(IndexItemAttrStore),
 	}, nil
@@ -66,7 +76,7 @@ func (wh *TailHub) ChannelExists(channel string) bool {
 
 // SetTrace turns on/off logging of incoming workers messages
 func (wh *TailHub) SetTrace(on bool) {
-	wh.Log.Info("Set tracing", "trace", on)
+	wh.log.Info("Set tracing", "trace", on)
 	wh.Config.Trace = on
 }
 
@@ -75,8 +85,8 @@ func (wh *TailHub) TraceEnabled() bool {
 	return wh.Config.Trace
 }
 
-// TailRun runs tail worker
-func (wh *TailHub) TailRun(channel string, out chan *TailerMessage, readyChan chan struct{}) error {
+// TailerRun creates and runs tail worker
+func (wh *TailHub) TailerRun(channel string, out chan *TailerMessage, readyChan chan struct{}) error {
 	config := tail.Config{
 		Follow: true,
 		ReOpen: true,
@@ -106,7 +116,15 @@ func (wh *TailHub) TailRun(channel string, out chan *TailerMessage, readyChan ch
 
 	unregister := make(chan bool)
 	wh.workers[channel] = &tailer{Buffer: [][]byte{}, Unregister: unregister, Incomplete: lineIncomlete}
-	go wh.bgTailer(t, channel, out, unregister, readyChan)
+	tailer := &Tailer{
+		tf:         t,
+		channel:    channel,
+		out:        out,
+		unregister: unregister,
+		readyChan:  readyChan,
+		log:        wh.log,
+	}
+	go tailer.run()
 	return nil
 }
 
@@ -139,20 +157,19 @@ func (wh *TailHub) Append(channel string, data []byte) bool {
 	return true
 }
 
-func (wh *TailHub) bgTailer(tf *tail.Tail, channel string, out chan *TailerMessage, unregister chan bool, readyChan chan struct{}) {
-	wh.Log.Info("Tailer started", "channel", channel)
-	readyChan <- struct{}{}
-
+func (tailer *Tailer) run() {
+	tailer.log.Info("Tailer started", "channel", tailer.channel)
+	tailer.readyChan <- struct{}{}
 	for {
 		select {
-		case line := <-tf.Lines:
-			out <- &TailerMessage{Channel: channel, Data: line.Text}
-		case <-unregister:
-			err := tf.Stop() // Cleanup()
+		case line := <-tailer.tf.Lines:
+			tailer.out <- &TailerMessage{Channel: tailer.channel, Data: line.Text}
+		case <-tailer.unregister:
+			err := tailer.tf.Stop() // Cleanup()
 			if err != nil {
-				wh.Log.Error(err, "Tailer stopped with error", "channel", channel)
+				tailer.log.Error(err, "Tailer stopped with error", "channel", tailer.channel)
 			} else {
-				wh.Log.Info("Tailer stopped", "channel", channel)
+				tailer.log.Info("Tailer stopped", "channel", tailer.channel)
 			}
 			return
 		}

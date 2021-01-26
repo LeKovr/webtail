@@ -48,12 +48,12 @@ const (
 	space   = " "
 )
 
-// readPump pumps messages from the websocket connection to the hub.
+// runReadPump pumps messages from the websocket connection to the hub.
 //
 // The application runs readPump in a per-connection goroutine. The application
 // ensures that there is at most one reader on a connection by executing all
 // reads from this goroutine.
-func (c *Client) readPump() {
+func (c *Client) runReadPump() {
 	defer func() {
 		c.hub.unregister <- c
 		c.conn.Close()
@@ -70,7 +70,7 @@ func (c *Client) readPump() {
 	for {
 		_, message, err := c.conn.ReadMessage()
 		if err != nil {
-			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway) {
+			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseNormalClosure) {
 				c.log.Error(err, "UnexpectedCloseError")
 			}
 			break
@@ -80,12 +80,12 @@ func (c *Client) readPump() {
 	}
 }
 
-// writePump pumps messages from the hub to the websocket connection.
+// runWritePump pumps messages from the hub to the websocket connection.
 //
 // A goroutine running writePump is started for each connection. The
 // application ensures that there is at most one writer to a connection by
 // executing all writes from this goroutine.
-func (c *Client) writePump() {
+func (c *Client) runWritePump() {
 	ticker := time.NewTicker(pingPeriod)
 	defer func() {
 		ticker.Stop()
@@ -103,7 +103,7 @@ func (c *Client) writePump() {
 			if !ok {
 				// The hub closed the channel.
 				err := c.conn.WriteMessage(websocket.CloseMessage, []byte{})
-				if err != nil {
+				if err != nil && err != websocket.ErrCloseSent {
 					c.log.Error(err, "Close socket")
 				}
 				return

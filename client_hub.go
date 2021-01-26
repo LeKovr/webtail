@@ -58,6 +58,8 @@ type Message struct {
 // subscribers holds clients subscribed on channel
 type subscribers map[*Client]bool
 
+// codebeat:disable[TOO_MANY_IVARS]
+
 // ClientHub maintains the set of active clients and broadcasts messages to them
 type ClientHub struct {
 	log logr.Logger
@@ -80,6 +82,9 @@ type ClientHub struct {
 	// Unregister requests from clients.
 	unregister chan *Client
 
+	// Quit channel
+	quit chan struct{}
+
 	// Worker Hub
 	wh *TailHub
 
@@ -89,11 +94,11 @@ type ClientHub struct {
 	// Channel subscriber counts
 	stats map[string]uint64
 
-	// Quit channel
-	quit chan struct{}
-
+	// wg used by Close for wh.WorkerStop ending
 	wg sync.WaitGroup
 }
+
+// codebeat:enable[TOO_MANY_IVARS]
 
 func newClientHub(logger logr.Logger, wh *TailHub) *ClientHub {
 	return &ClientHub{
@@ -102,13 +107,12 @@ func newClientHub(logger logr.Logger, wh *TailHub) *ClientHub {
 		register:    make(chan *Client),
 		unregister:  make(chan *Client),
 		clients:     make(map[*Client]bool),
-		receive:     make(chan *TailerMessage), // 1),
+		receive:     make(chan *TailerMessage),
 		index:       make(chan *IndexItemEvent),
 		quit:        make(chan struct{}),
 		wh:          wh,
 		subscribers: make(map[string]subscribers),
 		stats:       make(map[string]uint64),
-		//		wg * sync.WaitGroup,
 	}
 }
 
@@ -144,7 +148,6 @@ func (h *ClientHub) Run() {
 func (h *ClientHub) Close() {
 	h.quit <- struct{}{}
 	h.wg.Wait()
-
 }
 
 func (h *ClientHub) fromClient(msg *Message) {
@@ -161,7 +164,7 @@ func (h *ClientHub) fromClient(msg *Message) {
 	case "attach":
 		data = h.attach(in.Channel, msg.Client)
 	case "detach":
-		// проверить, что клиент подписан
+		// check subscription
 		if !h.wh.WorkerExists(in.Channel) {
 			// unknown producer
 			data, _ = json.Marshal(TailMessage{Type: "error", Data: "unknown channel", Channel: in.Channel})
@@ -169,15 +172,14 @@ func (h *ClientHub) fromClient(msg *Message) {
 			// no subscriber
 			data, _ = json.Marshal(TailMessage{Type: "error", Data: "not subscribed", Channel: in.Channel})
 		} else {
-			// удалить подписку
-			data, _ = json.Marshal(TailMessage{Type: "detach", Channel: in.Channel})
 			h.unsubscribe(in.Channel, msg.Client)
+			data, _ = json.Marshal(TailMessage{Type: "detach", Channel: in.Channel})
 		}
 	case "stats":
-		// вернуть массив счетчиков подписок на каналы
+		// send index counters
 		data, _ = json.Marshal(StatsMessage{Type: "stats", Data: h.stats})
 	case "trace":
-		// включить/выключить трассировку
+		// on/off tracing
 		h.wh.SetTrace(in.Channel == "on")
 	}
 	if len(data) > 0 {
@@ -223,7 +225,7 @@ func (h *ClientHub) attach(channel string, client *Client) (data []byte) {
 	if !h.wh.WorkerExists(channel) {
 		readyChan := make(chan struct{})
 		// no producer => create
-		err = h.wh.TailRun(channel, h.receive, readyChan)
+		err = h.wh.TailerRun(channel, h.receive, readyChan)
 		if err != nil {
 			h.log.Error(err, "Worker create error")
 			data, _ = json.Marshal(TailMessage{Type: "error", Data: "worker create error"})
@@ -232,7 +234,6 @@ func (h *ClientHub) attach(channel string, client *Client) (data []byte) {
 		h.subscribers[channel] = make(subscribers)
 		<-readyChan
 	} else if _, ok := h.subscribers[channel][client]; ok {
-		// клиент уже подписан - ответить "уже подписан" и выйти
 		data, _ = json.Marshal(TailMessage{Type: "error", Data: "attached already", Channel: channel})
 		return
 	}
@@ -252,36 +253,37 @@ func (h *ClientHub) attach(channel string, client *Client) (data []byte) {
 }
 
 func (h *ClientHub) sendReply(ch string, cl *Client) bool {
-	if ch == "" {
-		// отправить клиенту список каналов
-		istore := h.wh.Index()
-		// To store the keys in slice in sorted order
-		var keys []string
-		for k := range *istore {
-			keys = append(keys, k)
-		}
-		sort.Strings(keys)
-
-		for _, v := range keys {
-			idx := &IndexMessage{
-				Type: "index",
-				Data: IndexItemEvent{
-					Name:    v,
-					ModTime: (*istore)[v].ModTime,
-					Size:    (*istore)[v].Size,
-				},
-			}
-			data, _ := json.Marshal(idx)
-			if !h.send(cl, data) {
-				return false
-			}
-		}
-	} else {
-		// отправить клиенту текущий буфер
+	if ch != "" {
+		// send actual buffer
 		for _, item := range h.wh.Buffer(ch) {
 			if !h.send(cl, item) {
 				return false
 			}
+		}
+		return true
+	}
+	// send channel index
+	istore := h.wh.Index()
+	// To store the keys in slice in sorted order
+	keys := make([]string, len(*istore))
+	i := 0
+	for k := range *istore {
+		keys[i] = k
+		i++
+	}
+	sort.Strings(keys)
+	for _, v := range keys {
+		idx := &IndexMessage{
+			Type: "index",
+			Data: IndexItemEvent{
+				Name:    v,
+				ModTime: (*istore)[v].ModTime,
+				Size:    (*istore)[v].Size,
+			},
+		}
+		data, _ := json.Marshal(idx)
+		if !h.send(cl, data) {
+			return false
 		}
 	}
 	return true
@@ -314,7 +316,7 @@ func (h *ClientHub) unsubscribe(k string, client *Client) {
 	delete(h.subscribers[k], client)
 	h.stats[k]--
 	if k != "" && h.stats[k] == 0 {
-		// если подписчиков не осталось - отправить true в unregister продюсера
+		// tailer has no subscribers => stop it
 		h.wh.WorkerStop(k)
 	}
 }

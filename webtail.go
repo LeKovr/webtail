@@ -6,6 +6,8 @@ import (
 	"github.com/go-logr/logr"
 )
 
+// codebeat:disable[TOO_MANY_IVARS]
+
 // Config defines local application flags
 type Config struct {
 	Root        string `long:"root"  default:"log/"  description:"Root directory for log files"`
@@ -20,6 +22,8 @@ type Config struct {
 	WSReadBufferSize  int `long:"ws_read_buf"  default:"1024" description:"WS Read Buffer Size"`
 	WSWriteBufferSize int `long:"ws_write_buf" default:"1024" description:"WS Write Buffer Size"`
 }
+
+// codebeat:enable[TOO_MANY_IVARS]
 
 // Service holds WebTail service
 type Service struct {
@@ -45,6 +49,7 @@ func (wt *Service) Run() {
 
 // Close stops a message hub
 func (wt *Service) Close() {
+	wt.log.Info("Service Exiting")
 	wt.hub.Close()
 }
 
@@ -66,6 +71,6 @@ func (wt *Service) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	// Allow collection of memory referenced by the caller by doing all work in
 	// new goroutines.
-	go client.writePump()
-	go client.readPump()
+	go client.runWritePump()
+	go client.runReadPump()
 }
