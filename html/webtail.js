@@ -57,21 +57,21 @@ function showFiles(file) {
     var p = row.clone();
     var path = '&nbsp;';
     var a = splitter.exec(f.name); // split file dir and name
-    if (a == undefined) {
+    if (a === undefined) {
         p.find('[rel="link"]').text(f.name);
     } else {
         p.find('[rel="link"]').text(a[2]);
-        if (prevDir != a[1]) {
+        if (prevDir !== a[1]) {
             path = prevDir = a[1];
         }
     }
     var item = $('*[data-file="' + file.name + '"]');
 
-    if (item.length == 0 && f.deleted) {
+    if (item.length === 0 && f.deleted) {
         return;
     } else if (f.deleted) {
         item.remove()
-    } else if (item.length == 0) {
+    } else if (item.length === 0) {
         row.before(p);
     } else {
         item.replaceWith(p);
@@ -86,7 +86,7 @@ function showFiles(file) {
 }
 
 function titleReset() {
-    if (WebTail.file != '') {
+    if (WebTail.file !== '') {
         document.title = WebTail.file + WebTail.title + ' - WebTail';
     } else {
         document.title = 'Log Index' + WebTail.title + ' - WebTail';
@@ -104,7 +104,7 @@ function tail(file) {
     titleReset();
     $('#tail-top').find('[rel="title"]')[0].innerHTML = file;
     var m = JSON.stringify({ type: 'attach', channel: file })
-    console.debug("send: " + m);
+    window.console.debug("send: " + m);
     WebTail.ws.send(m);
 }
 
@@ -112,22 +112,22 @@ function tail(file) {
 function showPage() {
     WebTail.unread = 0;
     WebTail.focused = true;
-    if (WebTail.attached != undefined) {
-        var m = JSON.stringify({ type: 'detach', channel: WebTail.attached });
-        console.debug("send: " + m);
+    var m;
+    if (WebTail.attached !== undefined) {
+        m = JSON.stringify({ type: 'detach', channel: WebTail.attached });
+        window.console.debug("send: " + m);
         WebTail.ws.send(m);
     }
-    if (location.hash == "") {
+    if (location.hash === "") {
         $('table.table tbody').find("tr:not(:last)").remove();
-        if (WebTail.file != '') {}
         WebTail.file = '';
         titleReset();
         $('#tail-top').find('[rel="title"]')[0].innerHTML = '';
         $('#src').addClass('hide');
         $('#index').removeClass('hide');
         $('table.table thead tr:first').removeClass('hide'); // show header
-        var m = JSON.stringify({ type: 'attach' })
-        console.debug("send: " + m);
+        m = JSON.stringify({ type: 'attach' })
+        window.console.debug("send: " + m);
         WebTail.ws.send(m);
     } else {
         $('#tail-data').text('');
@@ -141,32 +141,26 @@ function showPage() {
     }
 }
 
-// Show stats in console
-// TODO: may be add interface?
-function stats() {
-    WebTail.ws.send(JSON.stringify({ type: 'stats' }))
-}
-
 // Setup websocket
 function connect() {
     try {
         var host = 'ws';
-        if (window.location.protocol == 'https:') host = 'wss';
+        if (window.location.protocol === 'https:') host = 'wss';
         host = host + '://' + WebTail.uri;
         WebTail.ws = new WebSocket(host);
 
         WebTail.ws.onopen = function() {
-            console.debug('Connection opened');
+            window.console.debug('Connection opened');
             showPage();
         }
 
         WebTail.ws.onclose = function(event) {
             if (event.wasClean) {
-                console.debug('Connection closed clean');
+                window.console.debug('Connection closed clean');
             } else {
-                console.debug('Connection aborted');
+                window.console.debug('Connection aborted');
             }
-            console.debug('Code: ' + event.code + ' reason: ' + event.reason);
+            window.console.debug('Code: ' + event.code + ' reason: ' + event.reason);
             $("#log").text('Connection closed');
             if (WebTail.timer) {
                 clearTimeout(WebTail.timer);
@@ -176,18 +170,18 @@ function connect() {
         }
 
         WebTail.ws.onerror = function(e) {
-            console.warn("connect error: %o", e);
+            window.console.warn("connect error: %o", e);
             $('#log').text(e.name);
         }
 
         WebTail.ws.onmessage = function(e) {
-            console.debug("got " + e.data);
+            window.console.debug("got " + e.data);
             var lines = e.data.split('\n');
             lines.forEach(processLine);
         };
 
     } catch (e) {
-        console.log(e);
+        window.console.log(e);
     }
 }
 
@@ -195,46 +189,46 @@ function processLine(l) {
     var m = JSON.parse(l, JSON.dateParser);
     $("#log").text('');
 
-    if (m.type == 'index') {
+    if (m.type === 'index') {
         showFiles(m.data);
-    } else if (m.type == 'detach') {
+    } else if (m.type === 'detach') {
         // tail detached
-        var mc = (m.channel != undefined) ? m.channel : '';
-        if (mc == WebTail.attached) {
+        var mc = (m.channel !== undefined) ? m.channel : '';
+        if (mc === WebTail.attached) {
             WebTail.attached = null;
         }
-    } else if (m.type == 'attach') {
+    } else if (m.type === 'attach') {
         // tail attached
-        WebTail.attached = (m.channel != undefined) ? m.channel : '';
-    } else if (m.type == 'stats') {
+        WebTail.attached = (m.channel !== undefined) ? m.channel : '';
+    } else if (m.type === 'stats') {
         // TODO: stats requested by calling stats() in console
-        console.log(JSON.stringify(m.data, null, 4))
-    } else if (m.type == 'log') {
+        window.console.log(JSON.stringify(m.data, null, 4))
+    } else if (m.type === 'log') {
         processLog(m.data);
-    } else if (m.type == 'error') {
-        console.warn("server error: %o", m);
+    } else if (m.type === 'error') {
+        window.console.warn("server error: %o", m);
         $('#log').text(m.data);
     } else {
-        console.warn("unknown response: %o", m);
+        window.console.warn("unknown response: %o", m);
     }
 }
 
 function processLog(data) {
     var $area = $('#tail-data');
-    var str = (data != undefined) ? data : '';
+    var str = (data !== undefined) ? data : '';
     var mask = $('#mask').val();
     var container;
-    if (mask == '') {
+    if (mask === '') {
         container = document.createTextNode(str)
     } else {
         container = document.createElement("span");
         var text = document.createTextNode(str);
         container.appendChild(text);
-        if (str.search($('#mask').val()) != -1) {
+        if (str.search($('#mask').val()) !== -1) {
             container.style.color = "red";
         }
     }
-    $area.append(container);;
+    $area.append(container);
     $area.append("<br />");
     if (!WebTail.focused) {
         titleUnread(++WebTail.unread);
@@ -252,7 +246,7 @@ function bodyOrHtml() {
         return document.scrollingElement;
     }
     // Fallback for legacy browsers
-    if (navigator.userAgent.indexOf('WebKit') != -1) {
+    if (navigator.userAgent.indexOf('WebKit') !== -1) {
         return document.body;
     }
     return document.documentElement;
@@ -313,7 +307,7 @@ window.onblur = function() {
 // with fix for integer seconds
 if (window.JSON && !window.JSON.dateParser) {
     var reISO = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2}(\.\d*)?)(?:Z|(\+|-)([\d|:]*))?$/;
-    var reMsAjax = /^\/Date\((d|-|.*)\)[\/|\\]$/;
+    var reMsAjax = /^\/Date\((d|-|.*)\)[/|\\]$/;
 
     JSON.dateParser = function(key, value) {
         if (typeof value !== 'string') return value;
