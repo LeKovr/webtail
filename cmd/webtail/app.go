@@ -3,6 +3,8 @@ package main
 import (
 	"log"
 	"net/http"
+	"os"
+	"os/signal"
 
 	stats_api "github.com/fukata/golang-stats-api-handler"
 
@@ -34,14 +36,23 @@ func Run(exitFunc func(code int)) {
 	if err != nil {
 		return
 	}
-	go wt.Run()
-	defer wt.Close()
 
 	http.Handle("/", FileServer(cfg.HTML))
 	http.Handle("/tail", wt)
 	http.HandleFunc("/api/stats", stats_api.Handler)
 	lg.Info("Listen", "addr", cfg.Listen)
-	err = http.ListenAndServe(cfg.Listen, nil)
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, os.Interrupt)
+	go wt.Run()
+	go func() {
+		// service connections
+		if err = http.ListenAndServe(cfg.Listen, nil); err != nil && err != http.ErrServerClosed {
+			quit <- os.Interrupt
+		}
+	}()
+	<-quit
+	wt.Close()
+	lg.Info("Server stopped")
 }
 
 // FileServer return embedded or given fs

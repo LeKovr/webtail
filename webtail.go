@@ -4,6 +4,7 @@ package webtail
 
 import (
 	"net/http"
+	"sync"
 
 	"github.com/go-logr/logr"
 )
@@ -30,18 +31,21 @@ type Config struct {
 // Service holds WebTail service
 type Service struct {
 	cfg *Config
-	hub *ClientHub
+	hub *Hub
+	wg  *sync.WaitGroup
 	log logr.Logger
 }
 
 // New creates WebTail service
 func New(log logr.Logger, cfg *Config) (*Service, error) {
-	tail, err := NewTailHub(log, cfg)
+	tail, err := NewTailService(log, cfg)
 	if err != nil {
 		return nil, err
 	}
-	hub := NewClientHub(log, tail)
-	return &Service{cfg: cfg, hub: hub, log: log}, nil
+	var wg sync.WaitGroup
+	hub := NewHub(log, tail, &wg)
+	service := Service{cfg: cfg, hub: hub, log: log, wg: &wg}
+	return &service, nil
 }
 
 // Run runs a message hub
@@ -53,6 +57,7 @@ func (wt *Service) Run() {
 func (wt *Service) Close() {
 	wt.log.Info("Service Exiting")
 	wt.hub.Close()
+	wt.wg.Wait()
 }
 
 // Handle handles websocket requests from the peer
@@ -73,6 +78,6 @@ func (wt *Service) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	// Allow collection of memory referenced by the caller by doing all work in
 	// new goroutines.
-	go client.runWritePump()
-	go client.runReadPump()
+	go client.runWritePump(wt.wg)
+	go client.runReadPump(wt.wg)
 }

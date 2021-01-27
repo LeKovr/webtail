@@ -21,7 +21,7 @@ func TestRun(t *testing.T) {
 		{"Help", 3, []string{"-h"}},
 		{"UnknownFlag", 2, []string{"-0"}},
 		{"UnknownRoot", 1, []string{"--root", "/notexists"}},
-		{"UnknownPort", 1, []string{"--listen", ":xx", "--root", "/tmp"}},
+		{"UnknownPort", 1, []string{"--listen", ":xx", "--root", "./"}},
 	}
 	for _, tt := range tests {
 		os.Args = append([]string{a[0]}, tt.args...)
@@ -45,7 +45,7 @@ func TestSetupConfig(t *testing.T) {
 func TestFileServer(t *testing.T) {
 	fs := cmd.FileServer("")
 	assert.NotNil(t, fs)
-	fs = cmd.FileServer("/tmp")
+	fs = cmd.FileServer("./")
 	assert.NotNil(t, fs)
 }
 func TestSetupLog(t *testing.T) {

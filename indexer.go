@@ -1,15 +1,15 @@
 package webtail
 
+// This file holds directory tree indexer methods
+
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
-	"strings"
-
 	"github.com/dc0d/dirwatch"
-	//	"github.com/go-logr/logr"
 )
 
 // IndexItemAttr holds File (index item) Attrs
@@ -22,74 +22,69 @@ type IndexItemAttr struct {
 type IndexItemAttrStore map[string]*IndexItemAttr
 
 // IndexerRun runs indexer
-func (wh *TailHub) IndexerRun(out chan *IndexItemEvent, wg *sync.WaitGroup) {
+func (ts *TailService) IndexerRun(out chan *IndexItemEvent, wg *sync.WaitGroup) {
 	unregister := make(chan bool)
-	wh.workers[""] = &tailer{Unregister: unregister}
-
+	ts.workers[""] = &TailAttr{Unregister: unregister}
 	readyChan := make(chan struct{})
-	go wh.bgIndexer(out, unregister, readyChan, wg)
+	go ts.runIndexWorker(out, unregister, readyChan, wg)
 	<-readyChan
-	wh.indexLoad(time.Now())
-	wh.log.Info("Indexer started")
+	ts.indexLoad(time.Now())
+	ts.log.Info("Indexer started")
 }
 
 // Index returns index items
-func (wh *TailHub) Index() *IndexItemAttrStore {
-	return &wh.index
+func (ts *TailService) Index() *IndexItemAttrStore {
+	return &ts.index
 }
 
-// Update updates item in index
-func (wh *TailHub) Update(msg *IndexItemEvent) {
+// IndexUpdate updates item in index
+func (ts *TailService) IndexUpdate(msg *IndexItemEvent) {
 	if !msg.Deleted {
-		wh.index[msg.Name] = &IndexItemAttr{ModTime: msg.ModTime, Size: msg.Size}
+		ts.index[msg.Name] = &IndexItemAttr{ModTime: msg.ModTime, Size: msg.Size}
 		return
 	}
 
-	if _, ok := wh.index[msg.Name]; ok {
-		wh.log.Info("Deleting file from index", "filename", msg.Name)
-		delete(wh.index, msg.Name)
+	if _, ok := ts.index[msg.Name]; ok {
+		ts.log.Info("Deleting file from index", "filename", msg.Name)
+		delete(ts.index, msg.Name)
 	}
 }
 
-// bgIndexer runs dirwatch
-func (wh *TailHub) bgIndexer(out chan *IndexItemEvent, unregister chan bool, readyChan chan struct{}, wg *sync.WaitGroup) {
+// runIndexWorker runs dirwatch
+func (ts *TailService) runIndexWorker(out chan *IndexItemEvent, unregister chan bool, readyChan chan struct{}, wg *sync.WaitGroup) {
 	wg.Add(1)
 	defer wg.Done()
 	notify := func(ev dirwatch.Event) {
-		wh.log.Info("Handling file event", "event", ev)
-		wh.indexUpdateFile(out, ev.Name)
+		ts.log.Info("Handling file event", "event", ev)
+		ts.indexUpdateFile(out, ev.Name)
 	}
-	logger := func(args ...interface{}) {
-		// data := args[1:]
-		wh.log.Info("Dirwatch log") // args[0].(string)) //, "data", &data)
-	}
+	logger := func(args ...interface{}) {} // Is it called ever?
 	watcher := dirwatch.New(dirwatch.Notify(notify), dirwatch.Logger(logger))
 	defer watcher.Stop()
-	watcher.Add(wh.Config.Root, true)
-
+	watcher.Add(ts.Config.Root, true)
 	readyChan <- struct{}{}
 	<-unregister
-	wh.log.Info("Indexer stopped")
+	ts.log.Info("Indexer stopped")
 }
 
-func (wh *TailHub) indexLoad(lastmod time.Time) {
-	dir := strings.TrimSuffix(wh.Config.Root, "/")
-	err := filepath.Walk(wh.Config.Root, func(path string, f os.FileInfo, err error) error {
+func (ts *TailService) indexLoad(lastmod time.Time) {
+	dir := strings.TrimSuffix(ts.Config.Root, "/")
+	err := filepath.Walk(ts.Config.Root, func(path string, f os.FileInfo, err error) error {
 		if !f.IsDir() {
 			if f.ModTime().Before(lastmod) {
 				p := strings.TrimPrefix(path, dir+"/")
-				wh.index[p] = &IndexItemAttr{ModTime: f.ModTime(), Size: f.Size()}
+				ts.index[p] = &IndexItemAttr{ModTime: f.ModTime(), Size: f.Size()}
 			}
 		}
 		return nil
 	})
 	if err != nil {
-		wh.log.Error(err, "Path walk")
+		ts.log.Error(err, "Path walk")
 	}
 }
 
-func (wh *TailHub) indexUpdateFile(out chan *IndexItemEvent, filePath string) {
-	dir := strings.TrimSuffix(wh.Config.Root, "/")
+func (ts *TailService) indexUpdateFile(out chan *IndexItemEvent, filePath string) {
+	dir := strings.TrimSuffix(ts.Config.Root, "/")
 	p := strings.TrimPrefix(filePath, dir+"/")
 
 	f, err := os.Stat(filePath)
@@ -97,7 +92,7 @@ func (wh *TailHub) indexUpdateFile(out chan *IndexItemEvent, filePath string) {
 		if os.IsNotExist(err) {
 			out <- &IndexItemEvent{Name: p, Deleted: true}
 		} else {
-			wh.log.Error(err, "Cannot get stat for file", "filepath", filePath)
+			ts.log.Error(err, "Cannot get stat for file", "filepath", filePath)
 		}
 	}
 	if !f.IsDir() {

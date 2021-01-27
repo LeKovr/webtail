@@ -10,6 +10,7 @@ package webtail
 import (
 	"bytes"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -32,7 +33,7 @@ const (
 
 // Client is a middleman between the websocket connection and the hub.
 type Client struct {
-	hub *ClientHub
+	hub *Hub
 
 	// The websocket connection.
 	conn *websocket.Conn
@@ -53,14 +54,15 @@ const (
 // The application runs readPump in a per-connection goroutine. The application
 // ensures that there is at most one reader on a connection by executing all
 // reads from this goroutine.
-func (c *Client) runReadPump() {
+func (c *Client) runReadPump(wg *sync.WaitGroup) {
+	wg.Add(1)
 	defer func() {
 		c.hub.unregister <- c
 		c.conn.Close()
+		wg.Done()
 	}()
 	c.conn.SetReadLimit(maxMessageSize)
 	err := c.conn.SetReadDeadline(time.Now().Add(pongWait))
-
 	if err != nil {
 		c.log.Error(err, "SetReadDeadline")
 		return
@@ -85,11 +87,13 @@ func (c *Client) runReadPump() {
 // A goroutine running writePump is started for each connection. The
 // application ensures that there is at most one writer to a connection by
 // executing all writes from this goroutine.
-func (c *Client) runWritePump() {
+func (c *Client) runWritePump(wg *sync.WaitGroup) {
+	wg.Add(1)
 	ticker := time.NewTicker(pingPeriod)
 	defer func() {
 		ticker.Stop()
 		c.conn.Close()
+		defer wg.Done()
 	}()
 	for {
 		select {
@@ -99,16 +103,16 @@ func (c *Client) runWritePump() {
 				c.log.Error(err, "SetWriteDeadline")
 				return
 			}
-
-			if !ok {
-				// The hub closed the channel.
-				err := c.conn.WriteMessage(websocket.CloseMessage, []byte{})
-				if err != nil && err != websocket.ErrCloseSent {
-					c.log.Error(err, "Close socket")
-				}
-				return
+			if ok {
+				c.sendMesage(message)
+				continue
 			}
-			c.sendMesage(message)
+			// The hub closed the channel.
+			err = c.conn.WriteMessage(websocket.CloseMessage, []byte{})
+			if err != nil && err != websocket.ErrCloseSent {
+				c.log.Error(err, "Close socket")
+			}
+			return
 		case <-ticker.C:
 			err := c.conn.SetWriteDeadline(time.Now().Add(writeWait))
 			if err != nil {
@@ -132,7 +136,6 @@ func (c *Client) sendMesage(message []byte) {
 		c.log.Error(err, "Write")
 		return
 	}
-
 	// Add queued chat messages to the current websocket message.
 	n := len(c.send)
 	for i := 0; i < n; i++ {
@@ -144,16 +147,15 @@ func (c *Client) sendMesage(message []byte) {
 			return
 		}
 	}
-
 	if err := w.Close(); err != nil {
 		return
 	}
 }
 
-func upgrader(rbs, wbs int) websocket.Upgrader {
+func upgrader(readBufferSize, writeBufferSize int) websocket.Upgrader {
 	return websocket.Upgrader{
-		ReadBufferSize:  rbs,
-		WriteBufferSize: wbs,
+		ReadBufferSize:  readBufferSize,
+		WriteBufferSize: writeBufferSize,
 		CheckOrigin:     func(r *http.Request) bool { return true },
 	}
 }
