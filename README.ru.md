@@ -2,8 +2,11 @@
   <a href="README.md#webtail">English</a> |
   <span>Pусский</span>
 </p>
+
 ---
+
 # webtail
+
 > Публикация изменений (журнальных) файлов через websocket
 
 [![Go Reference][ref1]][ref2]
@@ -50,7 +53,7 @@ go get -v github.com/LeKovr/webtail/...
 
 ### Бинарные пакеты
 
-См [Latest release](https://github.com/LeKovr/webtail/releases/latest)
+См. [Файлы релиза](https://github.com/LeKovr/webtail/releases/latest)
 
 ### Docker
 
@@ -60,7 +63,7 @@ go get -v github.com/LeKovr/webtail/...
 docker pull ghcr.io/lekovr/webtail:latest
 ```
 
-См пример использования в [docker-compose.yml](docker-compose.yml).
+См. также: пример использования в [docker-compose.yml](docker-compose.yml).
 
 Версия 0.43.1 - последняя из [доступных на hub.docker.com](https://hub.docker.com/repository/docker/lekovr/webtail/tags).
 

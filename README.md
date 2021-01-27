@@ -1,9 +1,13 @@
+# webtail
+
+> Tail [log]files via websocket
+
 <p align="center">
   <span>English</span> |
   <a href="README.ru.md#webtail">Pусский</a>
 </p>
+
 ---
-# webtail
 
 [![Go Reference][ref1]][ref2]
  [![GitHub Release][gr1]][gr2]
@@ -35,9 +39,7 @@
 [gl1]: https://img.shields.io/github/license/LeKovr/webtail.svg
 [gl2]: https://github.com/LeKovr/webtail/blob/master/LICENSE
 
-[webtail](https://github.com/LeKovr/webtail) - Tail [log]files via websocket
-
-This tool looks at files in directory tree & continuously shows updates of chosen file via websocket.
+[webtail](https://github.com/LeKovr/webtail) is a web-service and golang package used for continious updated files publication via websocker to browser.
 
 ![Ping stream sample](webtail-ping.png)
 
@@ -84,6 +86,7 @@ func main() {
     http.Handle("/tail", wt)
 }
 ```
+
 See also: [app.go](https://github.com/LeKovr/webtail/blob/master/cmd/webtail/app.go)
 
 ## Note about gorilla/websocket
