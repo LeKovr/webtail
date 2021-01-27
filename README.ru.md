@@ -1,9 +1,10 @@
 <p align="center">
-  <span>English</span> |
-  <a href="README.ru.md#webtail">Pусский</a>
+  <a href="README.md#webtail">English</a> |
+  <span>Pусский</span>
 </p>
 ---
 # webtail
+> Публикация изменений (журнальных) файлов через websocket
 
 [![Go Reference][ref1]][ref2]
  [![GitHub Release][gr1]][gr2]
@@ -35,37 +36,35 @@
 [gl1]: https://img.shields.io/github/license/LeKovr/webtail.svg
 [gl2]: https://github.com/LeKovr/webtail/blob/master/LICENSE
 
-[webtail](https://github.com/LeKovr/webtail) - Tail [log]files via websocket
-
-This tool looks at files in directory tree & continuously shows updates of chosen file via websocket.
+[webtail](https://github.com/LeKovr/webtail) - это веб-сервис и golang-пакет, предназначенные для публикации изменений постоянно дополняемых файлов (например - журналов) по протоколу websocket с доступом через браузер.
 
 ![Ping stream sample](webtail-ping.png)
 
 [![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2FLeKovr%2Fwebtail.svg?type=large)](https://app.fossa.com/projects/git%2Bgithub.com%2FLeKovr%2Fwebtail?ref=badge_large)
 
-## Install
+## Установка
 
 ```sh
 go get -v github.com/LeKovr/webtail/...
 ```
 
-### Download binary
+### Бинарные пакеты
 
-See [Latest release](https://github.com/LeKovr/webtail/releases/latest)
+См [Latest release](https://github.com/LeKovr/webtail/releases/latest)
 
 ### Docker
 
-Starting from 0.43.2 docker images are published at [GitHub Packages](https://ghcr.io), so use
+Начиная с версии 0.43.2 образы docker публикуются в [Реестре контейнеров GitHub](https://ghcr.io), для их получения используется команда
 
 ```sh
 docker pull ghcr.io/lekovr/webtail:latest
 ```
 
-See [docker-compose.yml](docker-compose.yml) for usage example.
+См пример использования в [docker-compose.yml](docker-compose.yml).
 
-v0.43.1 is the [last version available at dockerhub](https://hub.docker.com/repository/docker/lekovr/webtail/tags).
+Версия 0.43.1 - последняя из [доступных на hub.docker.com](https://hub.docker.com/repository/docker/lekovr/webtail/tags).
 
-## Use package in your service
+## Использование webtail в своем приложении
 
 ```go
 package main
@@ -84,14 +83,14 @@ func main() {
     http.Handle("/tail", wt)
 }
 ```
-See also: [app.go](https://github.com/LeKovr/webtail/blob/master/cmd/webtail/app.go)
+См. также: [app.go](https://github.com/LeKovr/webtail/blob/master/cmd/webtail/app.go)
 
-## Note about gorilla/websocket
+## Примечание про gorilla/websocket
 
-Starting from v0.30 this code is based on [gorilla/websocket chat example](https://github.com/gorilla/websocket/tree/master/examples/chat). See {client,hub}.go
+Начиная с версии 0.30 проект основан на [примере чата от gorilla/websocket](https://github.com/gorilla/websocket/tree/master/examples/chat). См [client.go](client.go)
 
-## License
+## Лицензия
 
-The MIT License (MIT), see [LICENSE](LICENSE).
+Исходный код проекта лицензирован под MIT, см [LICENSE](LICENSE).
 
-Copyright (c) 2016-2021 Aleksey Kovrizhkin <lekovr+webtail@gmail.com>
+Copyright (c) 2016-2021 Алексей Коврижкин <lekovr+webtail@gmail.com>
