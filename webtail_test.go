@@ -3,6 +3,7 @@ package webtail_test
 import (
 	"bytes"
 	"encoding/json"
+	"io"
 	"net/http/httptest"
 	"os"
 	"sort"
@@ -47,81 +48,68 @@ func (ss *ServerSuite) TearDownSuite() {
 	os.Remove(ss.cfg.Root + "/" + RootFile)
 }
 
-func (ss *ServerSuite) TestTrace() {
-	//	ss.T().Parallel()
-
+func (ss *ServerSuite) TestSimpleCommands() {
 	wtc, err := NewWebTailClient(ss.T(), &ss.cfg)
 	require.NoError(ss.T(), err)
 	defer wtc.Close()
-	go wtc.Listener(3)
+	tests := []struct {
+		name string
+		cmd  *webtail.InMessage
+		want []string
+	}{
+		{
+			name: "Get current trace",
+			cmd:  &webtail.InMessage{Type: "trace"},
+			want: []string{`{"enabled":true,"type":"trace"}`},
+		}, {
+			name: "Disable trace",
+			cmd:  &webtail.InMessage{Type: "trace", Channel: "off"},
+			want: []string{`{"enabled":false,"type":"trace"}`},
+		}, {
+			name: "Enable trace",
+			cmd:  &webtail.InMessage{Type: "trace", Channel: "on"},
+			want: []string{`{"enabled":true,"type":"trace"}`},
+		}, {
+			name: "Try to unsubscribe when not subscribed",
+			cmd:  &webtail.InMessage{Type: "detach"},
+			want: []string{`{"data":"not subscribed","type":"error"}`},
+		}, {
+			name: "Try to subscribe to unexistent channel",
+			cmd:  &webtail.InMessage{Type: "attach", Channel: ".notexists"},
+			want: []string{`{"channel":".notexists","data":"unknown channel","type":"error"}`},
+		}, {
+			name: "Try to unsubscribe from unexistent channel",
+			cmd:  &webtail.InMessage{Type: "detach", Channel: ".notexists"},
+			want: []string{`{"channel":".notexists","data":"unknown channel","type":"error"}`},
+		}, {
+			name: "Subscribe on file",
+			cmd:  &webtail.InMessage{Type: "attach", Channel: "subdir/another.log"},
+			want: []string{`{"channel":"subdir/another.log","type":"attach"}`},
+		}, {
+			name: "Set subscriber count",
+			cmd:  &webtail.InMessage{Type: "stats"},
+			want: []string{`{"data":{"subdir/another.log":1},"type":"stats"}`},
+		}, {
+			name: "Try to subscribe again",
+			cmd:  &webtail.InMessage{Type: "attach", Channel: "subdir/another.log"},
+			want: []string{`{"channel":"subdir/another.log","data":"attached already","type":"error"}`},
+		},
+	}
+	go wtc.Listener(len(tests) + 1)
 
-	want := []string{`{"enabled":true,"type":"trace"}`}
-	got := wtc.Call(&webtail.InMessage{Type: "trace"}, len(want), false)
-	require.Equal(ss.T(), want, got)
-
-	want = []string{`{"enabled":false,"type":"trace"}`}
-	got = wtc.Call(&webtail.InMessage{Type: "trace", Channel: "off"}, len(want), false)
-	require.Equal(ss.T(), want, got)
-	want = []string{`{"enabled":true,"type":"trace"}`}
-	got = wtc.Call(&webtail.InMessage{Type: "trace", Channel: "on"}, len(want), false)
-	require.Equal(ss.T(), want, got)
-
-}
-
-func (ss *ServerSuite) TestStats() {
-	// no parallel - no other subscribers allowed ss.T().Parallel()
-
-	wtc, err := NewWebTailClient(ss.T(), &ss.cfg)
-	require.NoError(ss.T(), err)
-	defer wtc.Close()
-	go wtc.Listener(3)
-
-	want := []string{`{"channel":"subdir/another.log","type":"attach"}`}
-	got := wtc.Call(&webtail.InMessage{Type: "attach", Channel: "subdir/another.log"}, len(want), false)
-	require.Equal(ss.T(), want, got)
-	wtc.WaitSync(1) // wait for index attach TODO: timeout here yet
-
-	want = []string{`{"data":{"subdir/another.log":1},"type":"stats"}`}
-	got = wtc.Call(&webtail.InMessage{Type: "stats"}, len(want), false)
-	require.Equal(ss.T(), want, got)
-
-	// check attach double
-	want = []string{`{"channel":"subdir/another.log","data":"attached already","type":"error"}`}
-	got = wtc.Call(&webtail.InMessage{Type: "attach", Channel: "subdir/another.log"}, len(want), false)
-	require.Equal(ss.T(), want, got)
-	wtc.WaitSync(1) // wait for index attach TODO: timeout here yet
-
-}
-func (ss *ServerSuite) TestError() {
-	ss.T().Parallel()
-	wtc, err := NewWebTailClient(ss.T(), &ss.cfg)
-	require.NoError(ss.T(), err)
-	defer wtc.Close()
-	go wtc.Listener(4)
+	for _, tt := range tests {
+		got := wtc.Call(tt.cmd, len(tt.want), false)
+		require.Equal(ss.T(), tt.want, got)
+	}
 
 	want := []string{`{"data":"parse error","type":"error"}`}
 	err = wtc.ws.WriteJSON(`bad"data`)
-	require.NoError(wtc.t, err)
-
+	require.NoError(wtc.t, err, "Incorrect request")
 	got := wtc.Receive(len(want), false)
 	require.Equal(ss.T(), want, got)
-
-	want = []string{`{"data":"not subscribed","type":"error"}`}
-	got = wtc.Call(&webtail.InMessage{Type: "detach"}, len(want), false)
-	require.Equal(ss.T(), want, got)
-
-	want = []string{`{"channel":".notexists","data":"unknown channel","type":"error"}`}
-	got = wtc.Call(&webtail.InMessage{Type: "attach", Channel: ".notexists"}, len(want), false)
-	require.Equal(ss.T(), want, got)
-
-	want = []string{`{"channel":".notexists","data":"unknown channel","type":"error"}`}
-	got = wtc.Call(&webtail.InMessage{Type: "detach", Channel: ".notexists"}, len(want), false)
-	require.Equal(ss.T(), want, got)
-
 }
 
 func (ss *ServerSuite) TestTail() {
-	ss.T().Parallel()
 	wtc, err := NewWebTailClient(ss.T(), &ss.cfg)
 	require.NoError(ss.T(), err)
 	defer wtc.Close()
@@ -160,7 +148,7 @@ func (ss *ServerSuite) TestTail() {
 	_, err = f.WriteString("test log row three\n")
 	require.NoError(ss.T(), err)
 	f.Close()
-	wtc.WaitSync(2) // wait for RootFile create & write
+	wtc.WaitSync(1) // wait for RootFile update
 
 	want = []string{
 		`{"channel":"file1.log","type":"detach"}`,
@@ -180,7 +168,6 @@ func (ss *ServerSuite) TestTail() {
 	}
 	got = wtc.Call(&webtail.InMessage{Type: "detach"}, len(want), false)
 	require.Equal(ss.T(), want, got)
-	//ss.T().Log("------------------------------")
 }
 
 type WebTailClient struct {
@@ -225,7 +212,6 @@ func NewWebTailClient(t *testing.T, cfg *webtail.Config) (*WebTailClient, error)
 	return wtc, nil
 }
 
-//
 func (wtc *WebTailClient) WaitSync(syncs int) {
 	for i := 0; i < syncs; i++ {
 		ticker := time.NewTicker(time.Duration(1) * time.Second)
@@ -240,6 +226,7 @@ func (wtc *WebTailClient) WaitSync(syncs int) {
 		}
 	}
 }
+
 func (wtc *WebTailClient) Call(cmd *webtail.InMessage, replies int, ordered bool) []string {
 	err := wtc.ws.WriteJSON(cmd)
 	require.Nil(wtc.t, err)
@@ -258,29 +245,30 @@ func (wtc *WebTailClient) Receive(replies int, ordered bool) []string {
 	return rv
 }
 
-func (wt *WebTailClient) Close() {
-	ticker := time.NewTicker(time.Duration(2) * time.Second)
+func (wtc *WebTailClient) Close() {
+	ticker := time.NewTicker(time.Duration(1) * time.Second)
 	defer ticker.Stop()
 	select {
 	case <-ticker.C:
-		wt.t.Log("Stop by timeout")
-		wsclose(wt.ws, wt.done)
-	case <-wt.interrupt:
-		wt.t.Log("Stop by event")
-		wsclose(wt.ws, wt.done)
+		wtc.t.Log("Stop by timeout")
+		wsclose(wtc.ws, wtc.done)
+	case <-wtc.interrupt:
+		wtc.t.Log("Stop by event")
+		wsclose(wtc.ws, wtc.done)
 	}
-	wt.ws.Close()
-	wt.htServer.Close()
-	wt.wtServer.Close()
+	wtc.ws.Close()
+	wtc.htServer.Close()
+	wtc.wtServer.Close()
 }
 
 func (wtc *WebTailClient) Listener(limit int) {
+	defer close(wtc.done)
 	start := time.Now()
 	t := wtc.t
 	count := 0
 	for {
 		_, msg, err := wtc.ws.ReadMessage()
-		if err != nil {
+		if err != nil || err == io.EOF {
 			if !websocket.IsCloseError(err, websocket.CloseNormalClosure) {
 				require.NoError(t, err)
 			}
@@ -299,6 +287,7 @@ func (wtc *WebTailClient) Listener(limit int) {
 					wtc.feedBackChan <- struct{}{}
 				}
 			} else if val["type"] == "attach" {
+				// `val["channel"] == ""` adds 1 sec to test timing
 				_, ok := val["channel"]
 				if !ok {
 					wtc.t.Log("SyncAttach sent")
