@@ -71,18 +71,17 @@ import (
 )
 
 func main() {
-    var wt *webtail.Service
-    wt, err = webtail.New(log, cfg.WebTail)
+    wt, err := webtail.New(log, cfg.WebTail)
     if err != nil {
         return
     }
     go wt.Run()
+    defer wt.Close()
     // ...
-    http.HandleFunc("/tail", func(w http.ResponseWriter, r *http.Request) {
-        wt.Handle(w, r)
-    })
+    http.Handle("/tail", wt)
 }
 ```
+See also: [app.go](https://github.com/LeKovr/webtail/blob/master/cmd/webtail/app.go)
 
 ## Note about gorilla/websocket
 
