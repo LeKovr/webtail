@@ -106,7 +106,8 @@ type ClientHub struct {
 
 // codebeat:enable[TOO_MANY_IVARS]
 
-func newClientHub(logger logr.Logger, wh *TailHub) *ClientHub {
+// NewClientHub creates hub for client services
+func NewClientHub(logger logr.Logger, wh *TailHub) *ClientHub {
 	return &ClientHub{
 		log:         logger,
 		broadcast:   make(chan *Message),
