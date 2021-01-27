@@ -76,7 +76,7 @@ vet:
 test: gen coverage.out
 
 coverage.out: $(SOURCES)
-	$(GO) test -tags test -covermode=atomic -coverprofile=$@ ./...
+	$(GO) test -tags test -race -covermode=atomic -coverprofile=$@ ./...
 
 ## Show package coverage in html (make cov-html PKG=counter)
 cov-html: coverage.out
@@ -115,7 +115,7 @@ buildall: lint vet
 	@echo "*** $@ ***" ; \
 	  for a in "$(ALLARCH)" ; do \
 	    echo "** $${a%/*} $${a#*/}" ; \
-	    P=$(PRG)_$${a%/*}_$${a#*/} ; \
+	    P=$(PRG)-$${a%/*}_$${a#*/} ; \
 	    GOOS=$${a%/*} GOARCH=$${a#*/} $(GO) build -o $$P -ldflags \
 	      "-X main.built=$(BUILD_DATE) -X main.version=$(APP_VERSION)" ./cmd/$(PRG) ; \
 	  done
@@ -124,12 +124,14 @@ buildall: lint vet
 dist: clean buildall
 	@echo "*** $@ ***"
 	@[ -d $(DIRDIST) ] || mkdir $(DIRDIST)
-	@sha256sum $(PRG)_* > $(DIRDIST)/SHA256SUMS ; \
+	@sha256sum $(PRG)-* > $(DIRDIST)/SHA256SUMS ; \
 	  for a in "$(ALLARCH)" ; do \
 	    echo "** $${a%/*} $${a#*/}" ; \
-	    P=$(PRG)_$${a%/*}_$${a#*/} ; \
-	    zip "$(DIRDIST)/$$P.zip" "$$P" README.md ; \
+	    P=$(PRG)-$${a%/*}_$${a#*/} ; \
+	    zip "$(DIRDIST)/$$P.zip" "$$P" README.md README.ru.md webtail-ping.png; \
+        rm "$$P" ; \
 	  done
+
 
 ## clean generated files
 clean:
@@ -140,6 +142,7 @@ clean:
 	  done
 	@[ -d $(DIRDIST) ] && rm -rf $(DIRDIST) || true
 	@[ -f $(PRG) ] && rm -f $(PRG) || true
+	@[ ! -f coverage.out ] || rm coverage.out
 
 # ------------------------------------------------------------------------------
 ## Docker operations
