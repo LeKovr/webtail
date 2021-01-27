@@ -57,7 +57,7 @@ function showFiles(file) {
     var p = row.clone();
     var path = '&nbsp;';
     var a = splitter.exec(f.name); // split file dir and name
-    if (a === undefined) {
+    if (a == undefined) { // '===' does not works
         p.find('[rel="link"]').text(f.name);
     } else {
         p.find('[rel="link"]').text(a[2]);
