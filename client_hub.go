@@ -22,6 +22,12 @@ type TailMessage struct {
 	Data    string `json:"data,omitempty"`
 }
 
+// TraceMessage holds outgoing trace state
+type TraceMessage struct {
+	Type    string `json:"type"`
+	Enabled bool   `json:"enabled"`
+}
+
 // StatsMessage holds outgoing app stats
 type StatsMessage struct {
 	Type string            `json:"type"`
@@ -180,7 +186,8 @@ func (h *ClientHub) fromClient(msg *Message) {
 		data, _ = json.Marshal(StatsMessage{Type: "stats", Data: h.stats})
 	case "trace":
 		// on/off tracing
-		h.wh.SetTrace(in.Channel == "on")
+		h.wh.SetTrace(in.Channel)
+		data, _ = json.Marshal(TraceMessage{Type: "trace", Enabled: h.wh.TraceEnabled()})
 	}
 	if len(data) > 0 {
 		h.send(msg.Client, data)

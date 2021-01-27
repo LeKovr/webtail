@@ -75,9 +75,13 @@ func (wh *TailHub) ChannelExists(channel string) bool {
 }
 
 // SetTrace turns on/off logging of incoming workers messages
-func (wh *TailHub) SetTrace(on bool) {
-	wh.log.Info("Set tracing", "trace", on)
-	wh.Config.Trace = on
+func (wh *TailHub) SetTrace(mode string) {
+	if mode == "on" {
+		wh.Config.Trace = true
+	} else if mode == "off" {
+		wh.Config.Trace = false
+	}
+	wh.log.Info("Tracing", "trace", wh.Config.Trace)
 }
 
 // TraceEnabled returns trace state
