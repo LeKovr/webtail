@@ -3,13 +3,14 @@ package webtail_test
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"net/http/httptest"
 	"os"
+	"sort"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/a8m/djson"
 	"github.com/gorilla/websocket"
 	"github.com/jessevdk/go-flags"
 	"github.com/stretchr/testify/require"
@@ -46,134 +47,274 @@ func (ss *ServerSuite) TearDownSuite() {
 	os.Remove(ss.cfg.Root + "/" + RootFile)
 }
 
-type received struct {
-	Type    string          `json:"type"`
-	Channel string          `json:"channel,omitempty"`
-	Data    json.RawMessage `json:"data,omitempty"`
+func (ss *ServerSuite) TestTrace() {
+	//	ss.T().Parallel()
+
+	wtc, err := NewWebTailClient(ss.T(), &ss.cfg)
+	require.NoError(ss.T(), err)
+	defer wtc.Close()
+	go wtc.Listener(3)
+
+	want := []string{`{"enabled":true,"type":"trace"}`}
+	got := wtc.Call(&webtail.InMessage{Type: "trace"}, len(want), false)
+	require.Equal(ss.T(), want, got)
+
+	want = []string{`{"enabled":false,"type":"trace"}`}
+	got = wtc.Call(&webtail.InMessage{Type: "trace", Channel: "off"}, len(want), false)
+	require.Equal(ss.T(), want, got)
+	want = []string{`{"enabled":true,"type":"trace"}`}
+	got = wtc.Call(&webtail.InMessage{Type: "trace", Channel: "on"}, len(want), false)
+	require.Equal(ss.T(), want, got)
+
 }
 
-func (ss *ServerSuite) TestIndex() {
-	logger := genericr.New(func(e genericr.Entry) {
-		ss.T().Log(e.String())
-	})
-	srv, err := webtail.New(logger, &ss.cfg)
+func (ss *ServerSuite) TestStats() {
+	// no parallel - no other subscribers allowed ss.T().Parallel()
+
+	wtc, err := NewWebTailClient(ss.T(), &ss.cfg)
 	require.NoError(ss.T(), err)
-	go srv.Run()
-	defer srv.Close()
-	s := httptest.NewServer(srv)
-	defer s.Close()
-	// Convert http://127.0.0.1 to ws://127.0.0.
-	u := "ws" + strings.TrimPrefix(s.URL, "http")
+	defer wtc.Close()
+	go wtc.Listener(3)
 
-	// Connect to the server
-	ws, _, err := websocket.DefaultDialer.Dial(u, nil)
-	require.Nil(ss.T(), err)
-	defer ws.Close()
+	want := []string{`{"channel":"subdir/another.log","type":"attach"}`}
+	got := wtc.Call(&webtail.InMessage{Type: "attach", Channel: "subdir/another.log"}, len(want), false)
+	require.Equal(ss.T(), want, got)
+	wtc.WaitSync(1) // wait for index attach TODO: timeout here yet
 
-	done := make(chan struct{})
-	feedBackChan := make(chan struct{}, 3)
-	interrupt := make(chan os.Signal, 1)
-	go ss.listenWS(ws, done, feedBackChan, interrupt)
+	want = []string{`{"data":{"subdir/another.log":1},"type":"stats"}`}
+	got = wtc.Call(&webtail.InMessage{Type: "stats"}, len(want), false)
+	require.Equal(ss.T(), want, got)
 
-	err = ws.WriteJSON(&webtail.InMessage{Type: "detach"})
-	require.Nil(ss.T(), err)
+	// check attach double
+	want = []string{`{"channel":"subdir/another.log","data":"attached already","type":"error"}`}
+	got = wtc.Call(&webtail.InMessage{Type: "attach", Channel: "subdir/another.log"}, len(want), false)
+	require.Equal(ss.T(), want, got)
+	wtc.WaitSync(1) // wait for index attach TODO: timeout here yet
 
-	err = ws.WriteJSON(&webtail.InMessage{Type: "attach"})
+}
+func (ss *ServerSuite) TestError() {
+	ss.T().Parallel()
+	wtc, err := NewWebTailClient(ss.T(), &ss.cfg)
 	require.NoError(ss.T(), err)
+	defer wtc.Close()
+	go wtc.Listener(4)
 
-	ss.waitSync(feedBackChan) // wait for indexer started
+	want := []string{`{"data":"parse error","type":"error"}`}
+	err = wtc.ws.WriteJSON(`bad"data`)
+	require.NoError(wtc.t, err)
+
+	got := wtc.Receive(len(want), false)
+	require.Equal(ss.T(), want, got)
+
+	want = []string{`{"data":"not subscribed","type":"error"}`}
+	got = wtc.Call(&webtail.InMessage{Type: "detach"}, len(want), false)
+	require.Equal(ss.T(), want, got)
+
+	want = []string{`{"channel":".notexists","data":"unknown channel","type":"error"}`}
+	got = wtc.Call(&webtail.InMessage{Type: "attach", Channel: ".notexists"}, len(want), false)
+	require.Equal(ss.T(), want, got)
+
+	want = []string{`{"channel":".notexists","data":"unknown channel","type":"error"}`}
+	got = wtc.Call(&webtail.InMessage{Type: "detach", Channel: ".notexists"}, len(want), false)
+	require.Equal(ss.T(), want, got)
+
+}
+
+func (ss *ServerSuite) TestTail() {
+	ss.T().Parallel()
+	wtc, err := NewWebTailClient(ss.T(), &ss.cfg)
+	require.NoError(ss.T(), err)
+	defer wtc.Close()
+	go wtc.Listener(12)
+
+	want := []string{`{"type":"attach"}`}
+	got := wtc.Call(&webtail.InMessage{Type: "attach"}, len(want), false)
+	require.Equal(ss.T(), want, got)
+	wtc.WaitSync(1) // wait for index attach
+
 	testFile := ss.cfg.Root + "/" + RootFile
-
 	f, err := os.Create(testFile)
 	require.NoError(ss.T(), err)
 	_, err = f.WriteString("test log row zero\ntest log row one\ntest log row two\n")
 	require.NoError(ss.T(), err)
 	f.Close()
 
-	err = ws.WriteJSON(&webtail.InMessage{Type: "trace"})
-	require.Nil(ss.T(), err)
-	err = ws.WriteJSON(&webtail.InMessage{Type: "trace", Channel: "on"})
-	require.Nil(ss.T(), err)
+	wtc.WaitSync(2) // wait for RootFile create & write
+	want = []string{
+		`{"data":{"name":"file.log","size":28},"type":"index"}`,
+		`{"data":{"name":"file1.log","size":52},"type":"index"}`,
+		`{"data":{"name":"file1.log","size":52},"type":"index"}`,
+		`{"data":{"name":"subdir/another.log","size":22},"type":"index"}`,
+	}
+	got = wtc.Receive(len(want), true)
+	require.Equal(ss.T(), want, got)
 
-	ss.waitSync(feedBackChan) // wait for RootFile create
-	ss.waitSync(feedBackChan) // wait for RootFile write
-
-	err = ws.WriteJSON(&webtail.InMessage{Type: "attach", Channel: RootFile})
-	require.Nil(ss.T(), err)
-	err = ws.WriteJSON(&webtail.InMessage{Type: "attach", Channel: RootFile})
-	require.Nil(ss.T(), err)
+	want = []string{
+		`{"channel":"file1.log","type":"attach"}`,
+	}
+	got = wtc.Call(&webtail.InMessage{Type: "attach", Channel: RootFile}, len(want), false)
+	require.Equal(ss.T(), want, got)
 
 	f, err = os.OpenFile(testFile, os.O_APPEND|os.O_WRONLY, 0644)
 	require.NoError(ss.T(), err)
 	_, err = f.WriteString("test log row three\n")
 	require.NoError(ss.T(), err)
 	f.Close()
-	ss.waitSync(feedBackChan) // wait for RootFile write
+	wtc.WaitSync(2) // wait for RootFile create & write
+
+	want = []string{
+		`{"channel":"file1.log","type":"detach"}`,
+		`{"data":"test log row three","type":"log"}`,
+		`{"data":"test log row two","type":"log"}`,
+		`{"data":{"name":"file1.log","size":71},"type":"index"}`,
+	}
+	got = wtc.Call(&webtail.InMessage{Type: "detach", Channel: RootFile}, len(want), true)
+	require.Equal(ss.T(), want, got)
+
 	os.Remove(testFile)
+	wtc.WaitSync(1) // wait for RootFile delete
 
-	err = ws.WriteJSON(&webtail.InMessage{Type: "detach", Channel: RootFile})
-	require.Nil(ss.T(), err)
+	want = []string{
+		`{"data":{"deleted":true,"name":"file1.log","size":0},"type":"index"}`,
+		`{"type":"detach"}`,
+	}
+	got = wtc.Call(&webtail.InMessage{Type: "detach"}, len(want), false)
+	require.Equal(ss.T(), want, got)
+	//ss.T().Log("------------------------------")
+}
 
-	err = ws.WriteJSON(&webtail.InMessage{Type: "detach", Channel: RootFile})
-	require.Nil(ss.T(), err)
+type WebTailClient struct {
+	t            *testing.T
+	ws           *websocket.Conn
+	wtServer     *webtail.Service
+	htServer     *httptest.Server
+	interrupt    chan os.Signal
+	done         chan struct{}
+	feedBackChan chan struct{}
+	expect       chan string
+}
 
-	err = ws.WriteJSON(&webtail.InMessage{Type: "stats"})
-	require.NoError(ss.T(), err)
+func NewWebTailClient(t *testing.T, cfg *webtail.Config) (*WebTailClient, error) {
+	logger := genericr.New(func(e genericr.Entry) {
+		t.Log(e.String())
+	})
+	wtServer, err := webtail.New(logger, cfg)
+	if err != nil {
+		return nil, err
+	}
+	htServer := httptest.NewServer(wtServer)
+	// Convert http://127.0.0.1 to ws://127.0.0.
+	u := "ws" + strings.TrimPrefix(htServer.URL, "http")
+	// Connect to the server
+	ws, _, err := websocket.DefaultDialer.Dial(u, nil)
+	if err != nil {
+		return nil, err
+	}
 
-	err = ws.WriteJSON(&webtail.InMessage{Type: "detach"})
-	require.NoError(ss.T(), err)
+	wtc := &WebTailClient{
+		t:            t,
+		ws:           ws,
+		wtServer:     wtServer,
+		htServer:     htServer,
+		done:         make(chan struct{}),
+		expect:       make(chan string, 20),
+		feedBackChan: make(chan struct{}, 5),
+		interrupt:    make(chan os.Signal, 1),
+	}
+	go wtServer.Run()
+	return wtc, nil
+}
 
-	ss.T().Log("final")
+//
+func (wtc *WebTailClient) WaitSync(syncs int) {
+	for i := 0; i < syncs; i++ {
+		ticker := time.NewTicker(time.Duration(1) * time.Second)
+		defer ticker.Stop()
+		select {
+		case <-wtc.feedBackChan:
+			wtc.t.Log("sync received")
+			continue
+		case <-ticker.C:
+			wtc.t.Log("sync timeout")
+			continue
+		}
+	}
+}
+func (wtc *WebTailClient) Call(cmd *webtail.InMessage, replies int, ordered bool) []string {
+	err := wtc.ws.WriteJSON(cmd)
+	require.Nil(wtc.t, err)
+	return wtc.Receive(replies, ordered)
+}
+
+func (wtc *WebTailClient) Receive(replies int, ordered bool) []string {
+	rv := make([]string, replies)
+	for i := 0; i < replies; i++ {
+		row := <-wtc.expect
+		rv[i] = row
+	}
+	if len(rv) > 1 && ordered {
+		sort.Strings(rv)
+	}
+	return rv
+}
+
+func (wt *WebTailClient) Close() {
 	ticker := time.NewTicker(time.Duration(2) * time.Second)
 	defer ticker.Stop()
 	select {
 	case <-ticker.C:
-		ss.T().Log("by timout")
-		wsclose(ws, done)
-	case <-interrupt:
-		ss.T().Log("by event")
-		wsclose(ws, done)
+		wt.t.Log("Stop by timeout")
+		wsclose(wt.ws, wt.done)
+	case <-wt.interrupt:
+		wt.t.Log("Stop by event")
+		wsclose(wt.ws, wt.done)
 	}
+	wt.ws.Close()
+	wt.htServer.Close()
+	wt.wtServer.Close()
 }
 
-func (ss *ServerSuite) listenWS(ws *websocket.Conn, done, back chan struct{}, interrupt chan os.Signal) {
-	defer close(done)
-	cnt := 0
+func (wtc *WebTailClient) Listener(limit int) {
 	start := time.Now()
+	t := wtc.t
+	count := 0
 	for {
-		_, msg, err := ws.ReadMessage()
+		_, msg, err := wtc.ws.ReadMessage()
 		if err != nil {
 			if !websocket.IsCloseError(err, websocket.CloseNormalClosure) {
-				require.Nil(ss.T(), err)
+				require.NoError(t, err)
 			}
 			return
 		}
 		result := bytes.Split(msg, []byte(newline))
 		for i := range result {
-			x := received{}
-			err := json.Unmarshal(result[i], &x)
-			require.Nil(ss.T(), err)
-			if x.Type == "attach" && x.Channel == "" {
-				ss.T().Log("Sync 1 sent")
-				back <- struct{}{}
-			} else if x.Type == "index" {
-				file := &webtail.IndexItemEvent{}
-				err := json.Unmarshal(x.Data, &file)
-				require.Nil(ss.T(), err)
-				ss.T().Log(fmt.Sprintf("<<  %s(%s) - %s / %d", x.Type, x.Channel, file.Name, file.Size))
-				if file.Name == RootFile {
-					ss.T().Log("Sync 2 sent")
-					back <- struct{}{}
+			val, err := djson.DecodeObject(result[i])
+			require.Nil(t, err)
+			if val["type"] == "index" {
+				d := val["data"].(map[string]interface{})
+				delete(d, "mtime")
+				val["data"] = d
+				if d["name"] == RootFile {
+					wtc.t.Log("SyncIndex sent")
+					wtc.feedBackChan <- struct{}{}
 				}
-				continue
+			} else if val["type"] == "attach" {
+				_, ok := val["channel"]
+				if !ok {
+					wtc.t.Log("SyncAttach sent")
+					wtc.feedBackChan <- struct{}{}
+				}
 			}
-			ss.T().Log(fmt.Sprintf("<<  %s(%s) - %s", x.Type, x.Channel, string(x.Data)))
+			ordered, err := json.Marshal(val)
+			require.NoError(t, err)
+			// fmt.Printf(">>>>>>>>>>>>>%s\n\n", ordered)
+			wtc.expect <- string(ordered)
 		}
-		cnt += len(result)
-		ss.T().Log("recv:", cnt)
-		if cnt == 14 {
-			ss.T().Logf("%d messages received for %s", cnt, time.Since(start).String())
-			interrupt <- os.Interrupt
+		count += len(result)
+		t.Log("recv:", count)
+		if count == limit {
+			t.Logf("%d messages received for %s", count, time.Since(start).String())
+			wtc.interrupt <- os.Interrupt
 			return
 		}
 	}
@@ -199,17 +340,4 @@ func wsclose(c *websocket.Conn, done chan struct{}) {
 func TestSuite(t *testing.T) {
 	myTest := &ServerSuite{}
 	suite.Run(t, myTest)
-}
-
-func (ss *ServerSuite) waitSync(back chan struct{}) {
-	ticker := time.NewTicker(time.Duration(1) * time.Second)
-	defer ticker.Stop()
-	select {
-	case <-back:
-		ss.T().Log("sync received")
-		return
-	case <-ticker.C:
-		ss.T().Log("sync timeout")
-		return
-	}
 }

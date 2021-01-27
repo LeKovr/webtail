@@ -3,6 +3,7 @@ module github.com/LeKovr/webtail
 go 1.15
 
 require (
+	github.com/a8m/djson v0.0.0-20170509170705-c02c5aef757f
 	github.com/dc0d/dirwatch v0.4.3
 	github.com/dc0d/retry v1.2.0 // indirect
 	github.com/fsnotify/fsnotify v1.4.9 // indirect
