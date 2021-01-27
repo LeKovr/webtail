@@ -1,3 +1,5 @@
+// Package webtail holds tailer service
+// You don't need anything except Service methods
 package webtail
 
 import (
@@ -38,7 +40,7 @@ func New(log logr.Logger, cfg *Config) (*Service, error) {
 	if err != nil {
 		return nil, err
 	}
-	hub := newClientHub(log, tail)
+	hub := NewClientHub(log, tail)
 	return &Service{cfg: cfg, hub: hub, log: log}, nil
 }
 
