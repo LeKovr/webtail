@@ -33,8 +33,6 @@ const (
 
 // Client is a middleman between the websocket connection and the hub.
 type Client struct {
-	hub *Hub
-
 	// The websocket connection.
 	conn *websocket.Conn
 
@@ -54,10 +52,10 @@ const (
 // The application runs readPump in a per-connection goroutine. The application
 // ensures that there is at most one reader on a connection by executing all
 // reads from this goroutine.
-func (c *Client) runReadPump(wg *sync.WaitGroup) {
+func (c *Client) runReadPump(wg *sync.WaitGroup, quit chan *Client, inbox chan *Message) {
 	wg.Add(1)
 	defer func() {
-		c.hub.unregister <- c
+		quit <- c
 		c.conn.Close()
 		wg.Done()
 	}()
@@ -78,7 +76,7 @@ func (c *Client) runReadPump(wg *sync.WaitGroup) {
 			return
 		}
 		message = bytes.TrimSpace(bytes.ReplaceAll(message, []byte(newline), []byte(space)))
-		c.hub.broadcast <- &Message{Client: c, Message: message}
+		inbox <- &Message{Client: c, Message: message}
 	}
 }
 

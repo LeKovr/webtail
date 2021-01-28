@@ -69,15 +69,14 @@ func (wt *Service) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	client := &Client{
-		hub:  wt.hub,
 		conn: conn,
 		send: make(chan []byte, wt.cfg.ClientBufferSize),
 		log:  wt.log,
 	}
-	client.hub.register <- client
+	wt.hub.register <- client
 
 	// Allow collection of memory referenced by the caller by doing all work in
 	// new goroutines.
 	go client.runWritePump(wt.wg)
-	go client.runReadPump(wt.wg)
+	go client.runReadPump(wt.wg, wt.hub.unregister, wt.hub.broadcast)
 }
