@@ -128,7 +128,7 @@ dist: clean buildall
 	  for a in "$(ALLARCH)" ; do \
 	    echo "** $${a%/*} $${a#*/}" ; \
 	    P=$(PRG)-$${a%/*}_$${a#*/} ; \
-	    zip "$(DIRDIST)/$$P.zip" "$$P" README.md README.ru.md webtail-ping.png; \
+	    zip "$(DIRDIST)/$$P.zip" "$$P" README.md README.ru.md screenshot.png; \
         rm "$$P" ; \
 	  done
 

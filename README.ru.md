@@ -41,7 +41,7 @@
 
 [webtail](https://github.com/LeKovr/webtail) - это веб-сервис и golang-пакет, предназначенные для публикации изменений постоянно дополняемых файлов (например - журналов) по протоколу websocket с доступом через браузер.
 
-![Ping stream sample](webtail-ping.png)
+![Ping stream sample](screenshot.png)
 
 [![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2FLeKovr%2Fwebtail.svg?type=large)](https://app.fossa.com/projects/git%2Bgithub.com%2FLeKovr%2Fwebtail?ref=badge_large)
 

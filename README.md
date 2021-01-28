@@ -41,7 +41,7 @@
 
 [webtail](https://github.com/LeKovr/webtail) is a web-service and golang package used for continious updated files publication via websocker to browser.
 
-![Ping stream sample](webtail-ping.png)
+![Ping stream sample](screenshot.png)
 
 [![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2FLeKovr%2Fwebtail.svg?type=large)](https://app.fossa.com/projects/git%2Bgithub.com%2FLeKovr%2Fwebtail?ref=badge_large)
 
