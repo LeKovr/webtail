@@ -50,7 +50,7 @@ steps:
     password:
       from_secret: my-docker-token
     auto_tag: true
-    tags: latest
+    tags: ghcr.io/lekovr/${DRONE_REPO_NAME}:latest
     custom_labels: org.opencontainers.image.source=${DRONE_REPO_LINK}
     label_schema: description="Tail [log]files via web"
     build_args:
