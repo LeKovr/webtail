@@ -5,6 +5,7 @@ package webtail
 import (
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -48,9 +49,23 @@ func (ts *TailService) IndexerRun(out chan *IndexItemEvent, wg *sync.WaitGroup) 
 	ts.log.Info("Indexer started")
 }
 
-// Index returns index items
-func (ts *TailService) Index() *IndexItemAttrStore {
-	return &ts.index
+// IndexKeys returns sorted index keys
+func (ts *TailService) IndexKeys() []string {
+	items := ts.index
+	// To store the keys in slice in sorted order
+	keys := make([]string, len(items))
+	i := 0
+	for k := range items {
+		keys[i] = k
+		i++
+	}
+	sort.Strings(keys)
+	return keys
+}
+
+// IndexItem returns index item
+func (ts *TailService) IndexItem(key string) *IndexItemAttr {
+	return ts.index[key]
 }
 
 // IndexUpdate updates TailService index item

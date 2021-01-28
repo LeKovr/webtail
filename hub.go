@@ -2,7 +2,6 @@ package webtail
 
 import (
 	"encoding/json"
-	"sort"
 	"sync"
 	"time"
 
@@ -194,10 +193,10 @@ func (h *Hub) fromClient(msg *Message) {
 	switch in.Type {
 	case "attach":
 		msgData, ok := h.subscribe(in.Channel, msg.Client)
-		data = formatMessage(in.Channel, "attach", msgData, ok)
+		data = formatTailMessage(in.Channel, "attach", msgData, ok)
 	case "detach":
 		msgData, ok := h.unsubscribe(in.Channel, msg.Client)
-		data = formatMessage(in.Channel, "detach", msgData, ok)
+		data = formatTailMessage(in.Channel, "detach", msgData, ok)
 	case "stats":
 		// send index counters
 		data, _ = json.Marshal(StatsMessage{Type: "stats", Data: h.stats})
@@ -260,7 +259,7 @@ func (h *Hub) subscribe(channel string, client *Client) (string, bool) {
 	}
 	// Confirm attach
 	// not via data because have to be first in response
-	if h.send(client, formatMessage(channel, "attach", MsgSubscribed, true)) {
+	if h.send(client, formatTailMessage(channel, "attach", MsgSubscribed, true)) {
 		if h.sendReply(channel, client) {
 			// subscribe client
 			h.subscribers[channel][client] = true
@@ -281,22 +280,14 @@ func (h *Hub) sendReply(ch string, cl *Client) bool {
 		return true
 	}
 	// send channel index
-	istore := h.workers.Index()
-	// To store the keys in slice in sorted order
-	keys := make([]string, len(*istore))
-	i := 0
-	for k := range *istore {
-		keys[i] = k
-		i++
-	}
-	sort.Strings(keys)
-	for _, v := range keys {
+	for _, v := range h.workers.IndexKeys() {
+		file := h.workers.IndexItem(v)
 		idx := &IndexMessage{
 			Type: "index",
 			Data: IndexItemEvent{
 				Name:    v,
-				ModTime: (*istore)[v].ModTime,
-				Size:    (*istore)[v].Size,
+				ModTime: file.ModTime,
+				Size:    file.Size,
 			},
 		}
 		data, _ := json.Marshal(idx)
@@ -349,7 +340,8 @@ func (h *Hub) unsubscribe(channel string, client *Client) (string, bool) {
 	return MsgUnSubscribed, true
 }
 
-func formatMessage(channel, cmd, msgData string, ok bool) []byte {
+// formatTailMessage packs data to json
+func formatTailMessage(channel, cmd, msgData string, ok bool) []byte {
 	if msgData == MsgNone {
 		return []byte{}
 	}
