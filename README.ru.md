@@ -3,7 +3,7 @@
 > Публикация изменений (журнальных) файлов через websocket
 
 <p align="center">
-  <a href="README.md#webtail">English</a> |
+  <a href="README.md#readme">English</a> |
   <span>Pусский</span>
 </p>
 

@@ -4,7 +4,7 @@
 
 <p align="center">
   <span>English</span> |
-  <a href="README.ru.md#webtail">Pусский</a>
+  <a href="README.ru.md#readme">Pусский</a>
 </p>
 
 ---
