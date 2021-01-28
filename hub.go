@@ -9,6 +9,17 @@ import (
 	"github.com/go-logr/logr"
 )
 
+// Returned Messages
+const (
+	MsgSubscribed        = "success"
+	MsgUnSubscribed      = "success"
+	MsgUnknownChannel    = "unknown channel"
+	MsgNotSubscribed     = "not subscribed"
+	MsgWorkerError       = "worker create error"
+	MsgSubscribedAlready = "attached already"
+	MsgNone              = ""
+)
+
 // InMessage holds incoming client request
 type InMessage struct {
 	Type    string `json:"type"`
@@ -68,31 +79,17 @@ type subscribers map[*Client]bool
 
 // Hub maintains the set of active clients and broadcasts messages to them
 type Hub struct {
+	// Logger
 	log logr.Logger
-
-	// Registered clients.
-	clients map[*Client]bool
-
-	// Inbound messages from the clients.
-	broadcast chan *Message
-
-	// Inbound messages from the tailers.
-	receive chan *TailerMessage
-
-	// Inbound messages from the channel indexer.
-	index chan *IndexItemEvent
-
-	// Register requests from the clients.
-	register chan *Client
-
-	// Unregister requests from clients.
-	unregister chan *Client
-
-	// Quit channel
-	quit chan struct{}
 
 	// Tail Service workers
 	workers *TailService
+
+	// wg used by Close for wh.WorkerStop ending
+	wg *sync.WaitGroup
+
+	// Registered clients.
+	clients map[*Client]bool
 
 	// Channel subscribers
 	subscribers map[string]subscribers
@@ -100,8 +97,23 @@ type Hub struct {
 	// Channel subscriber counts
 	stats map[string]uint64
 
-	// wg used by Close for wh.WorkerStop ending
-	wg *sync.WaitGroup
+	// Inbound messages from the clients.
+	broadcast chan *Message
+
+	// Register requests from the clients.
+	register chan *Client
+
+	// Unregister requests from clients.
+	unregister chan *Client
+
+	// Inbound messages from the tailers.
+	receive chan *TailerMessage
+
+	// Inbound messages from the channel indexer.
+	index chan *IndexItemEvent
+
+	// Quit channel
+	quit chan struct{}
 }
 
 // codebeat:enable[TOO_MANY_IVARS]
@@ -110,17 +122,17 @@ type Hub struct {
 func NewHub(logger logr.Logger, ts *TailService, wg *sync.WaitGroup) *Hub {
 	return &Hub{
 		log:         logger,
+		workers:     ts,
+		wg:          wg,
+		clients:     make(map[*Client]bool),
+		subscribers: make(map[string]subscribers),
+		stats:       make(map[string]uint64),
 		broadcast:   make(chan *Message),
 		register:    make(chan *Client),
 		unregister:  make(chan *Client),
-		clients:     make(map[*Client]bool),
 		receive:     make(chan *TailerMessage),
 		index:       make(chan *IndexItemEvent),
 		quit:        make(chan struct{}),
-		workers:     ts,
-		wg:          wg,
-		subscribers: make(map[string]subscribers),
-		stats:       make(map[string]uint64),
 	}
 }
 
@@ -128,13 +140,20 @@ func NewHub(logger logr.Logger, ts *TailService, wg *sync.WaitGroup) *Hub {
 func (h *Hub) Run() {
 	h.subscribers[""] = make(subscribers)
 	h.workers.IndexerRun(h.index, h.wg)
+	defer h.workers.WorkerStop("")
+	onAir := true
 	for {
 		select {
 		case client := <-h.register:
-			h.clients[client] = true
+			if onAir {
+				h.clients[client] = true
+			}
 		case client := <-h.unregister:
 			if _, ok := h.clients[client]; ok {
-				h.unsubscribeAll(client)
+				h.unsubscribeClient(client, onAir)
+			}
+			if !onAir && len(h.clients) == 0 {
+				return
 			}
 		case cmessage := <-h.broadcast:
 			// client sends attach/detach/?list
@@ -146,8 +165,13 @@ func (h *Hub) Run() {
 			// worker sends index update
 			h.fromIndexer(imessage)
 		case <-h.quit:
-			h.workers.WorkerStop("")
-			return
+			onAir = false
+			if len(h.clients) == 0 {
+				return
+			}
+			for client := range h.clients {
+				close(client.send)
+			}
 		}
 	}
 }
@@ -169,19 +193,11 @@ func (h *Hub) fromClient(msg *Message) {
 	h.log.Info("Received from Client", "message", in)
 	switch in.Type {
 	case "attach":
-		data = h.attach(in.Channel, msg.Client)
+		msgData, ok := h.subscribe(in.Channel, msg.Client)
+		data = formatMessage(in.Channel, "attach", msgData, ok)
 	case "detach":
-		// check subscription
-		if !h.workers.WorkerExists(in.Channel) {
-			// unknown producer
-			data, _ = json.Marshal(TailMessage{Type: "error", Data: "unknown channel", Channel: in.Channel})
-		} else if _, ok := h.subscribers[in.Channel][msg.Client]; !ok {
-			// no subscriber
-			data, _ = json.Marshal(TailMessage{Type: "error", Data: "not subscribed", Channel: in.Channel})
-		} else {
-			h.unsubscribe(in.Channel, msg.Client)
-			data, _ = json.Marshal(TailMessage{Type: "detach", Channel: in.Channel})
-		}
+		msgData, ok := h.unsubscribe(in.Channel, msg.Client)
+		data = formatMessage(in.Channel, "detach", msgData, ok)
 	case "stats":
 		// send index counters
 		data, _ = json.Marshal(StatsMessage{Type: "stats", Data: h.stats})
@@ -224,11 +240,10 @@ func (h *Hub) fromIndexer(msg *IndexItemEvent) {
 	}
 }
 
-func (h *Hub) attach(channel string, client *Client) (data []byte) {
+func (h *Hub) subscribe(channel string, client *Client) (string, bool) {
 	var err error
 	if !h.workers.ChannelExists(channel) {
-		data, _ = json.Marshal(TailMessage{Type: "error", Data: "unknown channel", Channel: channel})
-		return
+		return MsgUnknownChannel, false
 	}
 	if !h.workers.WorkerExists(channel) {
 		readyChan := make(chan struct{})
@@ -236,28 +251,23 @@ func (h *Hub) attach(channel string, client *Client) (data []byte) {
 		err = h.workers.TailerRun(channel, h.receive, readyChan, h.wg)
 		if err != nil {
 			h.log.Error(err, "Worker create error")
-			data, _ = json.Marshal(TailMessage{Type: "error", Data: "worker create error"})
-			return
+			return MsgWorkerError, false
 		}
 		h.subscribers[channel] = make(subscribers)
 		<-readyChan
 	} else if _, ok := h.subscribers[channel][client]; ok {
-		data, _ = json.Marshal(TailMessage{Type: "error", Data: "attached already", Channel: channel})
-		return
+		return MsgSubscribedAlready, false
 	}
 	// Confirm attach
 	// not via data because have to be first in response
-	datac, _ := json.Marshal(TailMessage{Type: "attach", Channel: channel})
-	if h.send(client, datac) {
+	if h.send(client, formatMessage(channel, "attach", MsgSubscribed, true)) {
 		if h.sendReply(channel, client) {
 			// subscribe client
 			h.subscribers[channel][client] = true
 			h.stats[channel]++
 		}
 	}
-	// 'data' added for linter which says:
-	// "naked return in func `attach` with 36 lines of code (nakedret)""
-	return data
+	return MsgNone, true
 }
 
 func (h *Hub) sendReply(ch string, cl *Client) bool {
@@ -302,29 +312,53 @@ func (h *Hub) send(client *Client, data []byte) bool {
 	select {
 	case client.send <- data:
 	default:
-		h.unsubscribeAll(client)
+		h.unsubscribeClient(client, true)
 		return false
 	}
 	return true
 }
 
-// unsubscribeAll removes all client subscriptions
-func (h *Hub) unsubscribeAll(client *Client) {
+// unsubscribeClient removes all client subscriptions
+func (h *Hub) unsubscribeClient(client *Client, needsClose bool) {
 	for k := range h.subscribers {
 		if _, ok := h.subscribers[k][client]; ok {
 			h.log.Info("Remove subscriber from channel", "channel", k)
 			h.unsubscribe(k, client)
 		}
 	}
-	close(client.send)
+	if needsClose {
+		close(client.send)
+	}
 	delete(h.clients, client)
 }
 
-func (h *Hub) unsubscribe(k string, client *Client) {
-	delete(h.subscribers[k], client)
-	h.stats[k]--
-	if k != "" && h.stats[k] == 0 {
-		// tailer has no subscribers => stop it
-		h.workers.WorkerStop(k)
+func (h *Hub) unsubscribe(channel string, client *Client) (string, bool) {
+	subscribers, ok := h.subscribers[channel]
+	if !ok {
+		return MsgUnknownChannel, false
 	}
+	if _, ok = subscribers[client]; !ok {
+		return MsgNotSubscribed, false
+	}
+	delete(h.subscribers[channel], client)
+	h.stats[channel]--
+	if channel != "" && h.stats[channel] == 0 {
+		// tailer has no subscribers => stop it
+		h.workers.WorkerStop(channel)
+	}
+	return MsgUnSubscribed, true
+}
+
+func formatMessage(channel, cmd, msgData string, ok bool) []byte {
+	if msgData == MsgNone {
+		return []byte{}
+	}
+	msg := TailMessage{Data: msgData, Channel: channel}
+	if ok {
+		msg.Type = cmd
+	} else {
+		msg.Type = "error"
+	}
+	data, _ := json.Marshal(msg)
+	return data
 }

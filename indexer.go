@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/dc0d/dirwatch"
+	"github.com/go-logr/logr"
 )
 
 // IndexItemAttr holds File (index item) Attrs
@@ -21,14 +22,29 @@ type IndexItemAttr struct {
 // IndexItemAttrStore holds all index items
 type IndexItemAttrStore map[string]*IndexItemAttr
 
+type indexWorker struct {
+	out  chan *IndexItemEvent
+	quit chan struct{}
+	log  logr.Logger
+	root string
+}
+
 // IndexerRun runs indexer
 func (ts *TailService) IndexerRun(out chan *IndexItemEvent, wg *sync.WaitGroup) {
-	unregister := make(chan bool)
-	ts.workers[""] = &TailAttr{Unregister: unregister}
+	quit := make(chan struct{})
+	ts.workers[""] = &TailAttr{Quit: quit}
 	readyChan := make(chan struct{})
-	go ts.runIndexWorker(out, unregister, readyChan, wg)
+	go indexWorker{
+		out:  out,
+		quit: quit,
+		log:  ts.log,
+		root: ts.Config.Root,
+	}.run(readyChan, wg)
 	<-readyChan
-	ts.indexLoad(time.Now())
+	err := loadIndex(ts.index, ts.Config.Root, time.Now())
+	if err != nil {
+		ts.log.Error(err, "Path walk")
+	}
 	ts.log.Info("Indexer started")
 }
 
@@ -37,54 +53,43 @@ func (ts *TailService) Index() *IndexItemAttrStore {
 	return &ts.index
 }
 
-// IndexUpdate updates item in index
+// IndexUpdate updates TailService index item
 func (ts *TailService) IndexUpdate(msg *IndexItemEvent) {
 	if !msg.Deleted {
 		ts.index[msg.Name] = &IndexItemAttr{ModTime: msg.ModTime, Size: msg.Size}
 		return
 	}
-
 	if _, ok := ts.index[msg.Name]; ok {
 		ts.log.Info("Deleting file from index", "filename", msg.Name)
 		delete(ts.index, msg.Name)
 	}
 }
 
-// runIndexWorker runs dirwatch
-func (ts *TailService) runIndexWorker(out chan *IndexItemEvent, unregister chan bool, readyChan chan struct{}, wg *sync.WaitGroup) {
+// run runs indexer worker
+func (iw indexWorker) run(readyChan chan struct{}, wg *sync.WaitGroup) {
 	wg.Add(1)
-	defer wg.Done()
+	defer func() {
+		iw.log.Info("indexworker close")
+		wg.Done()
+	}()
 	notify := func(ev dirwatch.Event) {
-		ts.log.Info("Handling file event", "event", ev)
-		ts.indexUpdateFile(out, ev.Name)
+		iw.log.Info("Handling file event", "event", ev)
+		if err := sendUpdate(iw.out, iw.root, ev.Name); err != nil {
+			iw.log.Error(err, "Cannot get stat for file", "filepath", ev.Name)
+		}
 	}
 	logger := func(args ...interface{}) {} // Is it called ever?
 	watcher := dirwatch.New(dirwatch.Notify(notify), dirwatch.Logger(logger))
 	defer watcher.Stop()
-	watcher.Add(ts.Config.Root, true)
+	watcher.Add(iw.root, true)
 	readyChan <- struct{}{}
-	<-unregister
-	ts.log.Info("Indexer stopped")
+	<-iw.quit
+	iw.log.Info("Indexer stopped")
 }
 
-func (ts *TailService) indexLoad(lastmod time.Time) {
-	dir := strings.TrimSuffix(ts.Config.Root, "/")
-	err := filepath.Walk(ts.Config.Root, func(path string, f os.FileInfo, err error) error {
-		if !f.IsDir() {
-			if f.ModTime().Before(lastmod) {
-				p := strings.TrimPrefix(path, dir+"/")
-				ts.index[p] = &IndexItemAttr{ModTime: f.ModTime(), Size: f.Size()}
-			}
-		}
-		return nil
-	})
-	if err != nil {
-		ts.log.Error(err, "Path walk")
-	}
-}
-
-func (ts *TailService) indexUpdateFile(out chan *IndexItemEvent, filePath string) {
-	dir := strings.TrimSuffix(ts.Config.Root, "/")
+// sendUpdate sends index update to out channel
+func sendUpdate(out chan *IndexItemEvent, root, filePath string) error {
+	dir := strings.TrimSuffix(root, "/")
 	p := strings.TrimPrefix(filePath, dir+"/")
 
 	f, err := os.Stat(filePath)
@@ -92,10 +97,25 @@ func (ts *TailService) indexUpdateFile(out chan *IndexItemEvent, filePath string
 		if os.IsNotExist(err) {
 			out <- &IndexItemEvent{Name: p, Deleted: true}
 		} else {
-			ts.log.Error(err, "Cannot get stat for file", "filepath", filePath)
+			return err
 		}
-	}
-	if !f.IsDir() {
+	} else if !f.IsDir() {
 		out <- &IndexItemEvent{Name: p, ModTime: f.ModTime(), Size: f.Size()}
 	}
+	return nil
+}
+
+// loadIndex loads index items for the first time
+func loadIndex(index IndexItemAttrStore, root string, lastmod time.Time) error {
+	dir := strings.TrimSuffix(root, "/")
+	err := filepath.Walk(root, func(path string, f os.FileInfo, err error) error {
+		if !f.IsDir() {
+			if f.ModTime().Before(lastmod) {
+				p := strings.TrimPrefix(path, dir+"/")
+				index[p] = &IndexItemAttr{ModTime: f.ModTime(), Size: f.Size()}
+			}
+		}
+		return nil
+	})
+	return err
 }

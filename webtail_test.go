@@ -84,7 +84,7 @@ func (ss *ServerSuite) TestSimpleCommands() {
 		}, {
 			name: "Subscribe on file",
 			cmd:  &webtail.InMessage{Type: "attach", Channel: "subdir/another.log"},
-			want: []string{`{"channel":"subdir/another.log","type":"attach"}`},
+			want: []string{`{"channel":"subdir/another.log","data":"success","type":"attach"}`},
 		}, {
 			name: "Set subscriber count",
 			cmd:  &webtail.InMessage{Type: "stats"},
@@ -115,7 +115,7 @@ func (ss *ServerSuite) TestTail() {
 	defer wtc.Close()
 	go wtc.Listener(12)
 
-	want := []string{`{"type":"attach"}`}
+	want := []string{`{"data":"success","type":"attach"}`}
 	got := wtc.Call(&webtail.InMessage{Type: "attach"}, len(want), false)
 	require.Equal(ss.T(), want, got)
 	wtc.WaitSync(1) // wait for index attach
@@ -138,7 +138,7 @@ func (ss *ServerSuite) TestTail() {
 	require.Equal(ss.T(), want, got)
 
 	want = []string{
-		`{"channel":"file1.log","type":"attach"}`,
+		`{"channel":"file1.log","data":"success","type":"attach"}`,
 	}
 	got = wtc.Call(&webtail.InMessage{Type: "attach", Channel: RootFile}, len(want), false)
 	require.Equal(ss.T(), want, got)
@@ -151,7 +151,7 @@ func (ss *ServerSuite) TestTail() {
 	wtc.WaitSync(1) // wait for RootFile update
 
 	want = []string{
-		`{"channel":"file1.log","type":"detach"}`,
+		`{"channel":"file1.log","data":"success","type":"detach"}`,
 		`{"data":"test log row three","type":"log"}`,
 		`{"data":"test log row two","type":"log"}`,
 		`{"data":{"name":"file1.log","size":71},"type":"index"}`,
@@ -164,7 +164,7 @@ func (ss *ServerSuite) TestTail() {
 
 	want = []string{
 		`{"data":{"deleted":true,"name":"file1.log","size":0},"type":"index"}`,
-		`{"type":"detach"}`,
+		`{"data":"success","type":"detach"}`,
 	}
 	got = wtc.Call(&webtail.InMessage{Type: "detach"}, len(want), false)
 	require.Equal(ss.T(), want, got)
@@ -256,9 +256,9 @@ func (wtc *WebTailClient) Close() {
 		wtc.t.Log("Stop by event")
 		wsclose(wtc.ws, wtc.done)
 	}
+	wtc.wtServer.Close()
 	wtc.ws.Close()
 	wtc.htServer.Close()
-	wtc.wtServer.Close()
 }
 
 func (wtc *WebTailClient) Listener(limit int) {

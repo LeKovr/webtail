@@ -75,7 +75,7 @@ func (c *Client) runReadPump(wg *sync.WaitGroup) {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseNormalClosure) {
 				c.log.Error(err, "UnexpectedCloseError")
 			}
-			break
+			return
 		}
 		message = bytes.TrimSpace(bytes.ReplaceAll(message, []byte(newline), []byte(space)))
 		c.hub.broadcast <- &Message{Client: c, Message: message}
@@ -107,7 +107,7 @@ func (c *Client) runWritePump(wg *sync.WaitGroup) {
 				c.sendMesage(message)
 				continue
 			}
-			// The hub closed the channel.
+			// The hub closed the channel. Send Bye and exit
 			err = c.conn.WriteMessage(websocket.CloseMessage, []byte{})
 			if err != nil && err != websocket.ErrCloseSent {
 				c.log.Error(err, "Close socket")
