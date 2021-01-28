@@ -49,14 +49,15 @@ function sizeFormatted(size) {
 // Show table with logfiles list
 function showFiles(file) {
     WebTail.logs = file;
-    var row = $('table.table tbody tr:last');
-    var splitter = /^(.+)\/([^/]+)$/;
+    const row = $('table.table tbody tr:last');
+    const splitter = /^(.+)\/([^/]+)$/;
     var prevDir = '';
     var f = file;
 
     var p = row.clone();
     var path = '&nbsp;';
-    if (a = splitter.exec(f.name)) { // split file dir and name
+    var a = splitter.exec(f.name); // split file dir and name
+    if (a !== null) {
         p.find('[rel="link"]').text(a[2]);
         if (prevDir !== a[1]) {
             path = prevDir = a[1];
