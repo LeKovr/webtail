@@ -1,13 +1,13 @@
+# webtail
+
+> Публикация изменений (журнальных) файлов через websocket
+
 <p align="center">
   <a href="README.md#webtail">English</a> |
   <span>Pусский</span>
 </p>
 
 ---
-
-# webtail
-
-> Публикация изменений (журнальных) файлов через websocket
 
 [![Go Reference][ref1]][ref2]
  [![GitHub Release][gr1]][gr2]
@@ -86,6 +86,7 @@ func main() {
     http.Handle("/tail", wt)
 }
 ```
+
 См. также: [app.go](https://github.com/LeKovr/webtail/blob/master/cmd/webtail/app.go)
 
 ## Примечание про gorilla/websocket
