@@ -56,14 +56,13 @@ function showFiles(file) {
 
     var p = row.clone();
     var path = '&nbsp;';
-    var a = splitter.exec(f.name); // split file dir and name
-    if (a == undefined) { // '===' does not works
-        p.find('[rel="link"]').text(f.name);
-    } else {
+    if (a = splitter.exec(f.name)) { // split file dir and name
         p.find('[rel="link"]').text(a[2]);
         if (prevDir !== a[1]) {
             path = prevDir = a[1];
         }
+    } else {
+        p.find('[rel="link"]').text(f.name);
     }
     var item = $('*[data-file="' + file.name + '"]');
 
