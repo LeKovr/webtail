@@ -187,12 +187,17 @@ dc: docker-compose.yml
 ## Other
 #:
 
-# https://dev.to/koddr/how-to-update-version-s-cache-of-your-package-in-pkg-go-dev-39ij
-update-pkg-cache:
-	GOPROXY=https://proxy.golang.org GO111MODULE=on \
-	go get github.com/LeKovr/webtail@v0.44.0
+## Update docs at pkg.go.dev
+update-godoc:
+	vf=$(APP_VERSION) ; v=$${vf%%-*} ; echo "Update for $$v..." ; \
+	curl 'https://proxy.golang.org/github.com/!le!kovr/webtail/@v/'$$v'.info'
 
-#	go get github.com/$(USER)/$(PACKAGE)@v$(VERSION)
+## Update latest docker image tag at ghcr.io
+update-ghcr:
+	vf=$(APP_VERSION) ; vs=$${vf%%-*} ; v=$${vs#v} ; echo "Update for $$v..." ; \
+	docker pull ghcr.io/lekovr/webtail:$$v && \
+	docker tag ghcr.io/lekovr/webtail:$$v ghcr.io/lekovr/webtail:latest && \
+	docker push ghcr.io/lekovr/webtail:latest
 
 # This code handles group header and target comment with one or two lines only
 ## list Makefile targets
