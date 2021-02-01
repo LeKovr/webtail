@@ -97,10 +97,10 @@ build-standalone: lint vet test
 
 ## build and run in foreground
 run: build
-	./$(PRG) --log_level debug --root log/ --html html --trace
+	./$(PRG) --debug --root log/ --html html --trace
 
 run-abs: build
-	./$(PRG) --log_level debug --root $$PWD/log/ --html html --trace
+	./$(PRG) --debug --root $$PWD/log/ --html html --trace
 
 doc:
 	@echo "Open http://localhost:6060/pkg/LeKovr/webtail"
