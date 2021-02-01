@@ -46,7 +46,7 @@ func (ts *TailService) IndexerRun(out chan *IndexItemEvent, wg *sync.WaitGroup) 
 	if err != nil {
 		ts.log.Error(err, "Path walk")
 	}
-	ts.log.Info("Indexer started")
+	ts.log.V(1).Info("Indexer started")
 }
 
 // IndexKeys returns sorted index keys
@@ -75,8 +75,13 @@ func (ts *TailService) IndexUpdate(msg *IndexItemEvent) {
 		return
 	}
 	if _, ok := ts.index[msg.Name]; ok {
-		ts.log.Info("Deleting file from index", "filename", msg.Name)
-		delete(ts.index, msg.Name)
+		ts.log.Info("Deleting path from index", "path", msg.Name)
+		items := ts.index
+		for k := range items {
+			if strings.HasPrefix(k, msg.Name) {
+				delete(ts.index, k)
+			}
+		}
 	}
 }
 
@@ -84,8 +89,8 @@ func (ts *TailService) IndexUpdate(msg *IndexItemEvent) {
 func (iw indexWorker) run(readyChan chan struct{}, wg *sync.WaitGroup) {
 	wg.Add(1)
 	defer func() {
-		iw.log.Info("indexworker close")
 		wg.Done()
+		iw.log.V(1).Info("Indexer stopped")
 	}()
 	notify := func(ev dirwatch.Event) {
 		iw.log.Info("Handling file event", "event", ev)
@@ -99,7 +104,6 @@ func (iw indexWorker) run(readyChan chan struct{}, wg *sync.WaitGroup) {
 	watcher.Add(iw.root, true)
 	readyChan <- struct{}{}
 	<-iw.quit
-	iw.log.Info("Indexer stopped")
 }
 
 // sendUpdate sends index update to out channel
