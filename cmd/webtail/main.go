@@ -5,14 +5,9 @@
 package main
 
 import (
-	"log"
 	"os"
 )
 
-// Actual version value will be set at build time
-var version = "0.0-dev"
-
 func main() {
-	log.Printf("WebTail %s. Tail (log)files via web.", version)
 	Run(os.Exit)
 }

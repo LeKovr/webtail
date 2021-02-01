@@ -16,11 +16,8 @@ import (
 
 // Flags defines local application flags
 type Flags struct {
-	Listen   string `long:"listen"      default:":8080"   description:"Http listen address"`
-	HTML     string `long:"html"        default:""        description:"Serve pages from this path"`
-	LogLevel string `long:"log_level"   default:"info"    description:"Log level [info|debug] (deprecated, see --debug)"`
-	Version  bool   `long:"version"                       description:"Show version and exit"`
-	Debug    bool   `long:"debug"                         description:"Show debug data"`
+	Version bool `long:"version"                       description:"Show version and exit"`
+	Debug   bool `long:"debug"                         description:"Show debug data"`
 }
 
 var (
@@ -51,20 +48,41 @@ func SetupConfig(args ...string) (*Config, error) {
 }
 
 // SetupLog creates logger
-func SetupLog(withDebug bool) logr.Logger {
-	aa := zap.NewDevelopmentEncoderConfig()
-	aa.EncodeLevel = zapcore.CapitalColorLevelEncoder
-	zapLog := zap.New(zapcore.NewCore(
-		zapcore.NewConsoleEncoder(aa),
-		zapcore.AddSync(colorable.NewColorableStdout()),
-		zapcore.DebugLevel,
-	),
-		zap.AddCaller(),
-	)
-	log := zapr.NewLogger(zapLog)
-
+func SetupLog(withDebug bool, opts ...zap.Option) logr.Logger {
+	var log logr.Logger
 	if withDebug {
-		log = log.V(1)
+		aa := zap.NewDevelopmentEncoderConfig()
+		zo := append(opts, zap.AddCaller())
+		aa.EncodeLevel = zapcore.CapitalColorLevelEncoder
+		zapLog := zap.New(zapcore.NewCore(
+			zapcore.NewConsoleEncoder(aa),
+			zapcore.AddSync(colorable.NewColorableStdout()),
+			zapcore.DebugLevel,
+		),
+			zo...,
+		)
+		log = zapr.NewLogger(zapLog)
+	} else {
+		zc := zap.NewProductionConfig()
+		zapLog, _ := zc.Build(opts...)
+		log = zapr.NewLogger(zapLog)
 	}
 	return log
+}
+
+// Shutdown runs exit after deferred cleanups have run
+func Shutdown(exitFunc func(code int), e error, log logr.Logger) {
+	if e != nil {
+		var code int
+		switch e {
+		case ErrGotHelp:
+			code = 3
+		case ErrBadArgs:
+			code = 2
+		default:
+			log.Error(e, "Run error")
+			code = 1
+		}
+		exitFunc(code)
+	}
 }

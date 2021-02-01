@@ -1,10 +1,10 @@
 package main
 
 import (
-	"log"
 	"net/http"
 	"os"
 	"os/signal"
+	"syscall"
 
 	stats_api "github.com/fukata/golang-stats-api-handler"
 
@@ -15,34 +15,36 @@ import (
 // Config holds all config vars
 type Config struct {
 	Flags
+	Listen   string `long:"listen"      default:":8080"   description:"Http listen address"`
+	HTML     string `long:"html"        default:""        description:"Serve pages from this path"`
+	LogLevel string `long:"log_level"   default:"info"    description:"Log level [info|debug] (deprecated, see --debug)"`
+
 	Tail webtail.Config `group:"Webtail Options"`
 }
 
+// Actual version value will be set at build time
+var version = "0.0-dev"
+
 // Run app and exit via given exitFunc
 func Run(exitFunc func(code int)) {
-	var err error
-
-	var cfg *Config
-
-	defer func() { shutdown(exitFunc, err) }()
-	cfg, err = SetupConfig()
+	cfg, err := SetupConfig()
+	log := SetupLog(err != nil || cfg.Debug)
+	defer func() { Shutdown(exitFunc, err, log) }()
+	log.Info("WebTail. Tail (log)files via web.", "v", version)
 	if err != nil || cfg.Version {
 		return
 	}
-	lg := SetupLog(cfg.LogLevel == "debug" || cfg.Debug)
-
 	var wt *webtail.Service
-	wt, err = webtail.New(lg, &cfg.Tail)
+	wt, err = webtail.New(log, &cfg.Tail)
 	if err != nil {
 		return
 	}
-
 	http.Handle("/", FileServer(cfg.HTML))
 	http.Handle("/tail", wt)
 	http.HandleFunc("/api/stats", stats_api.Handler)
-	lg.Info("Listen", "addr", cfg.Listen)
+	log.Info("Listen", "addr", cfg.Listen)
 	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, os.Interrupt)
+	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
 	go wt.Run()
 	go func() {
 		// service connections
@@ -52,7 +54,7 @@ func Run(exitFunc func(code int)) {
 	}()
 	<-quit
 	wt.Close()
-	lg.Info("Server stopped")
+	log.Info("Server stopped")
 }
 
 // FileServer return embedded or given fs
@@ -61,22 +63,4 @@ func FileServer(path string) http.Handler {
 		return http.FileServer(http.Dir(path))
 	}
 	return http.FileServer(internal.FS())
-}
-
-// exit after deferred cleanups have run
-func shutdown(exitFunc func(code int), e error) {
-	if e != nil {
-		var code int
-
-		switch e {
-		case ErrGotHelp:
-			code = 3
-		case ErrBadArgs:
-			code = 2
-		default:
-			log.Printf("Run error: %+v", e)
-			code = 1
-		}
-		exitFunc(code)
-	}
 }

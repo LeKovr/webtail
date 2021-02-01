@@ -1,40 +1,15 @@
 package main_test
 
 import (
-	"os"
+	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 
 	cmd "github.com/LeKovr/webtail/cmd/webtail"
 )
-
-func TestRun(t *testing.T) {
-	// Save original args
-	a := os.Args
-
-	tests := []struct {
-		name string
-		code int
-		args []string
-	}{
-		{"Help", 3, []string{"-h"}},
-		{"UnknownFlag", 2, []string{"-0"}},
-		{"UnknownRoot", 1, []string{"--root", "/notexists"}},
-		{"UnknownPort", 1, []string{"--listen", ":xx", "--root", "./"}},
-	}
-	for _, tt := range tests {
-		os.Args = append([]string{a[0]}, tt.args...)
-
-		var c int
-
-		cmd.Run(func(code int) { c = code })
-		assert.Equal(t, tt.code, c, tt.name)
-	}
-
-	// Restore original args
-	os.Args = a
-}
 
 func TestSetupConfig(t *testing.T) {
 	cfg, err := cmd.SetupConfig("--debug")
@@ -42,34 +17,40 @@ func TestSetupConfig(t *testing.T) {
 	assert.NotNil(t, cfg)
 }
 
-func TestFileServer(t *testing.T) {
-	fs := cmd.FileServer("")
-	assert.NotNil(t, fs)
-	fs = cmd.FileServer("./")
-	assert.NotNil(t, fs)
-}
 func TestSetupLog(t *testing.T) {
 	tests := []struct {
 		name     string
 		debug    bool
-		wantRows int
+		wantRows []string
 	}{
-		{"Debug", true, 2},
-		{"NoDebug", false, 1},
+		{"Debug", true, []string{"debug", "info", "error"}},
+		{"NoDebug", false, []string{"info", "error"}},
 	}
 	for _, tt := range tests {
-		l := cmd.SetupLog(tt.debug)
-		assert.NotNil(t, l)
+		logRows := []string{}
+		hook := func(e zapcore.Entry) error {
+			logRows = append(logRows, e.Message)
+			return nil
+		}
+		l := cmd.SetupLog(tt.debug, zap.Hooks(hook))
+		l.V(1).Info("debug")
+		l.Info("info")
+		l.Error(nil, "error")
+		assert.Equal(t, tt.wantRows, logRows)
 	}
 }
 
-/*
 func TestShutdown(t *testing.T) {
 	err := errors.New("unknown")
-
+	logRows := []string{}
+	hook := func(e zapcore.Entry) error {
+		logRows = append(logRows, e.Message)
+		return nil
+	}
+	l := cmd.SetupLog(false, zap.Hooks(hook))
 	var c int
 
-	shutdown(func(code int) { c = code }, err)
+	cmd.Shutdown(func(code int) { c = code }, err, l)
 	assert.Equal(t, 1, c)
+	assert.Equal(t, []string{"Run error"}, logRows)
 }
-*/
