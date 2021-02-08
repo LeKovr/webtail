@@ -1,6 +1,6 @@
 package webtail_test
 
-// This file holds WebTailClient methods
+// This file holds WebTailClient methods used in tests
 
 import (
 	"bytes"
