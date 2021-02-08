@@ -3,7 +3,7 @@ version: '2.1'
 services:
 
   app:
-    image: ${DC_IMAGE}
+    image: ${DOCKER_IMAGE}
     ports:
       - "${SERVER_PORT}:8080"
     volumes:

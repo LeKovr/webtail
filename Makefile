@@ -3,6 +3,7 @@
 #:
 
 SHELL          = /bin/sh
+PRG           ?= $(shell basename $$PWD)
 
 # -----------------------------------------------------------------------------
 # Build config
@@ -10,9 +11,6 @@ SHELL          = /bin/sh
 GO            ?= go
 # not supported in BusyBox v1.26.2
 SOURCES        = $(shell find . -maxdepth 3 -mindepth 1 -name '*.go'  -printf '%p\n')
-
-BUILD_DATE    ?= $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
-VCS_REF       ?= $(shell git rev-parse --short HEAD)
 APP_VERSION   ?= $(shell git describe --tags --always)
 GOLANG_VERSION = 1.15.5-alpine3.12
 
@@ -21,17 +19,16 @@ ARCH          ?= amd64
 ALLARCH       ?= "linux/amd64 linux/386 darwin/amd64"
 DIRDIST       ?= dist
 
+# Path to golang package docs
+GODOC_REPO    ?= github.com/!le!kovr/$(PRG)
+# App docker image
+DOCKER_IMAGE  ?= ghcr.io/lekovr/$(PRG)
+
 # -----------------------------------------------------------------------------
 # Docker image config
 
-# application name, docker-compose prefix
-PRG           ?= $(shell basename $$PWD)
-
 # Hardcoded in docker-compose.yml service name
 DC_SERVICE    ?= app
-
-# Generated docker image
-DC_IMAGE      ?= ghcr.io/lekovr/webtail
 
 # docker-compose image version
 DC_VER        ?= latest
@@ -88,12 +85,12 @@ build: gen $(PRG)
 ## Build webtail command
 $(PRG): $(SOURCES)
 	GOOS=$(OS) GOARCH=$(ARCH) $(GO) build -v -o $@ -ldflags \
-	  "-X main.built=$(BUILD_DATE) -X main.version=$(APP_VERSION)" ./cmd/$@
+	  "-X main.version=$(APP_VERSION)" ./cmd/$@
 
 ## Build like docker image from scratch
 build-standalone: lint vet test
 	GOOS=linux CGO_ENABLED=0 $(GO) build -a -v -o $(PRG) -ldflags \
-	  "-X main.built=$(BUILD_DATE) -X main.version=$(APP_VERSION)" ./cmd/$(PRG)
+	  "-X main.version=$(APP_VERSION)" ./cmd/$(PRG)
 
 ## build and run in foreground
 run: build
@@ -117,7 +114,7 @@ buildall: lint vet
 	    echo "** $${a%/*} $${a#*/}" ; \
 	    P=$(PRG)-$${a%/*}_$${a#*/} ; \
 	    GOOS=$${a%/*} GOARCH=$${a#*/} $(GO) build -o $$P -ldflags \
-	      "-X main.built=$(BUILD_DATE) -X main.version=$(APP_VERSION)" ./cmd/$(PRG) ; \
+	      "-X main.version=$(APP_VERSION)" ./cmd/$(PRG) ; \
 	  done
 
 ## create disro files
@@ -177,7 +174,7 @@ dc: docker-compose.yml
   -v $$PWD:$$PWD -w $$PWD \
   --env=SERVER_PORT=$(SERVER_PORT) \
   --env=LOG_DIR=$(LOG_DIR) \
-  --env=DC_IMAGE=$(DC_IMAGE) \
+  --env=DOCKER_IMAGE=$(DOCKER_IMAGE) \
   --env=GOLANG_VERSION=$(GOLANG_VERSION) \
   docker/compose:$(DC_VER) \
   -p $(PRG) \
@@ -187,17 +184,17 @@ dc: docker-compose.yml
 ## Other
 #:
 
-## Update docs at pkg.go.dev
-update-godoc:
+## update docs at pkg.go.dev
+godoc:
 	vf=$(APP_VERSION) ; v=$${vf%%-*} ; echo "Update for $$v..." ; \
-	curl 'https://proxy.golang.org/github.com/!le!kovr/webtail/@v/'$$v'.info'
+	curl 'https://proxy.golang.org/$(GODOC_REPO)/@v/'$$v'.info'
 
-## Update latest docker image tag at ghcr.io
-update-ghcr:
+## update latest docker image tag at ghcr.io
+ghcr:
 	vf=$(APP_VERSION) ; vs=$${vf%%-*} ; v=$${vs#v} ; echo "Update for $$v..." ; \
-	docker pull ghcr.io/lekovr/webtail:$$v && \
-	docker tag ghcr.io/lekovr/webtail:$$v ghcr.io/lekovr/webtail:latest && \
-	docker push ghcr.io/lekovr/webtail:latest
+	docker pull $(DOCKER_IMAGE):$$v && \
+	docker tag $(DOCKER_IMAGE):$$v $(DOCKER_IMAGE):latest && \
+	docker push $(DOCKER_IMAGE):latest
 
 # This code handles group header and target comment with one or two lines only
 ## list Makefile targets
