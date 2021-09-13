@@ -1,6 +1,6 @@
 module github.com/LeKovr/webtail
 
-go 1.15
+go 1.17
 
 require (
 	github.com/a8m/djson v0.0.0-20170509170705-c02c5aef757f
@@ -10,7 +10,6 @@ require (
 	github.com/fukata/golang-stats-api-handler v1.0.0
 	github.com/go-logr/logr v0.3.0
 	github.com/go-logr/zapr v0.3.0
-	github.com/golang/protobuf v1.3.1 // indirect
 	github.com/gorilla/websocket v1.4.2
 	github.com/jessevdk/go-flags v1.3.1-0.20170926144705-f88afde2fa19
 	github.com/mattn/go-colorable v0.1.8
