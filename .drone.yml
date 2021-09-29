@@ -11,7 +11,7 @@ steps:
 - name: test app
   image: golang:1.17.1-alpine3.14
   commands:
-  - go get -u github.com/phogolabs/parcello
+  - go get github.com/phogolabs/parcello/cmd/parcello@v0.8.2
   - go install github.com/phogolabs/parcello/cmd/parcello
   - go generate ./cmd/webtail/...
   - go test -tags test -covermode=atomic -coverprofile=coverage.out ./...
