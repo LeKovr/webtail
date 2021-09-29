@@ -9,7 +9,7 @@ steps:
   - git describe --tags --always > .version
 
 - name: test app
-  image: golang:1.15.5-alpine3.12
+  image: golang:1.17.1-alpine3.14
   commands:
   - go get -u github.com/phogolabs/parcello
   - go install github.com/phogolabs/parcello/cmd/parcello
@@ -35,7 +35,7 @@ steps:
     repo: testbuild
     dry_run: true
     build_args:
-      - GOLANG_VERSION=1.15.5-alpine3.12
+      - GOLANG_VERSION=1.17.1-alpine3.14
   when:
     event:
       exclude:
@@ -53,7 +53,7 @@ steps:
     custom_labels: org.opencontainers.image.source=${DRONE_REPO_LINK}
     label_schema: description="Tail [log]files via web"
     build_args:
-      - GOLANG_VERSION=1.15.5-alpine3.12
+      - GOLANG_VERSION=1.17.1-alpine3.14
   when:
     event:
     - tag
