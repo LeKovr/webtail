@@ -142,8 +142,8 @@ func (ss *ServerSuite) TestTail() {
 
 	want = []string{
 		`{"channel":"file1.log","data":"success","type":"detach"}`,
-		`{"data":"test log row three","type":"log"}`,
-		`{"data":"test log row two","type":"log"}`,
+		`{"channel":"file1.log","data":"test log row three","type":"log"}`,
+		`{"channel":"file1.log","data":"test log row two","type":"log"}`,
 		`{"data":{"name":"file1.log","size":71},"type":"index"}`,
 	}
 	got = wtc.Call(&webtail.InMessage{Type: "detach", Channel: RootFile}, len(want), true)
