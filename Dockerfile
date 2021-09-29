@@ -9,9 +9,8 @@ WORKDIR /opt/app
 
 # Cached layer
 COPY ./go.mod ./go.sum ./
-RUN go mod download
-RUN go get -u github.com/phogolabs/parcello
-RUN go install github.com/phogolabs/parcello/cmd/parcello
+RUN  go install github.com/phogolabs/parcello/cmd/parcello@v0.8.2
+RUN  go mod tidy
 
 # Sources dependent layer
 COPY ./ ./
