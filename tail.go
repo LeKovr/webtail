@@ -34,7 +34,7 @@ type TailService struct {
 
 // tailWorker holds tailer run arguments
 type tailWorker struct {
-	out     chan *TailerMessage
+	out     chan *TailMessage
 	quit    chan struct{}
 	log     logr.Logger
 	tf      *tail.Tail
@@ -122,15 +122,16 @@ func (ts *TailService) TailerAppend(channel string, data []byte) bool {
 }
 
 // TailerRun creates and runs tail worker
-func (ts *TailService) TailerRun(channel string, out chan *TailerMessage, readyChan chan struct{}, wg *sync.WaitGroup) error {
-	config := tail.Config{
-		Follow: true,
-		ReOpen: true,
-	}
+func (ts *TailService) TailerRun(channel string, out chan *TailMessage, readyChan chan struct{}, wg *sync.WaitGroup) error {
 	cfg := ts.Config
+	config := tail.Config{
+		Follow:      true,
+		ReOpen:      true,
+		MustExist:   true,
+		MaxLineSize: cfg.MaxLineSize,
+		Poll:        cfg.Poll,
+	}
 	filename := path.Join(cfg.Root, channel)
-	config.MaxLineSize = cfg.MaxLineSize
-	config.Poll = cfg.Poll
 	headTrimmed := false
 
 	if cfg.Bytes != 0 {
@@ -173,8 +174,15 @@ func (tw tailWorker) run(readyChan chan struct{}, wg *sync.WaitGroup) {
 	readyChan <- struct{}{}
 	for {
 		select {
-		case line := <-tw.tf.Lines:
-			tw.out <- &TailerMessage{Channel: tw.channel, Data: line.Text}
+		case line, ok := <-tw.tf.Lines:
+			if !ok {
+				log.Error(tw.tf.Err(), "Tailer channel is unavailable")
+				tw.out <- &TailMessage{Channel: tw.channel, Data: tw.tf.Err().Error(), Type: "error"}
+				<-tw.quit
+				return
+			} else {
+				tw.out <- &TailMessage{Channel: tw.channel, Data: line.Text, Type: "log"}
+			}
 		case <-tw.quit:
 			err := tw.tf.Stop() // Cleanup()
 			if err != nil {

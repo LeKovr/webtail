@@ -59,12 +59,6 @@ type IndexMessage struct {
 	Error string         `json:"error,omitempty"`
 }
 
-// TailerMessage holds message from tailers
-type TailerMessage struct {
-	Channel string
-	Data    string // []byte
-}
-
 // Message holds received message and sender
 type Message struct {
 	Client  *Client
@@ -106,7 +100,7 @@ type Hub struct {
 	unregister chan *Client
 
 	// Inbound messages from the tailers.
-	receive chan *TailerMessage
+	receive chan *TailMessage
 
 	// Inbound messages from the channel indexer.
 	index chan *IndexItemEvent
@@ -129,7 +123,7 @@ func NewHub(logger logr.Logger, ts *TailService, wg *sync.WaitGroup) *Hub {
 		broadcast:   make(chan *Message),
 		register:    make(chan *Client),
 		unregister:  make(chan *Client),
-		receive:     make(chan *TailerMessage),
+		receive:     make(chan *TailMessage),
 		index:       make(chan *IndexItemEvent),
 		quit:        make(chan struct{}),
 	}
@@ -211,12 +205,12 @@ func (h *Hub) fromClient(msg *Message) {
 }
 
 // fromTailer processes message from worker
-func (h *Hub) fromTailer(msg *TailerMessage) {
+func (h *Hub) fromTailer(msg *TailMessage) {
 	if h.workers.TraceEnabled() {
-		h.log.Info("Trace from tailer", "channel", msg.Channel, "data", msg.Data)
+		h.log.Info("Trace from tailer", "channel", msg.Channel, "data", msg.Data, "type", msg.Type)
 	}
-	data, _ := json.Marshal(TailMessage{Type: "log", Data: msg.Data})
-	if !h.workers.TailerAppend(msg.Channel, data) {
+	data, _ := json.Marshal(msg)
+	if msg.Type == "log" && !h.workers.TailerAppend(msg.Channel, data) {
 		h.log.Info("Incomplete line skipped")
 		return
 	}
