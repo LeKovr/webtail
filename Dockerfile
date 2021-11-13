@@ -1,9 +1,7 @@
 ARG GOLANG_VERSION
 
-FROM golang:$GOLANG_VERSION as builder
-
-# git used for app version fetch
-RUN apk add --no-cache git
+# FROM golang:$GOLANG_VERSION as builder
+FROM ghcr.io/dopos/golang-alpine:1.16.10-alpine3.14 as builder
 
 WORKDIR /opt/app
 

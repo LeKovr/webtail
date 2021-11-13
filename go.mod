@@ -1,6 +1,6 @@
 module github.com/LeKovr/webtail
 
-go 1.17
+go 1.16
 
 require (
 	github.com/a8m/djson v0.0.0-20170509170705-c02c5aef757f
