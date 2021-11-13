@@ -27,6 +27,14 @@ jobs:
       packages: write
 
     steps:
+      # Setup user name in lowercase
+      # Code from https://github.community/t/github-actions-repository-name-must-be-lowercase/184924
+      - name: set lower case owner name
+        run: |
+          echo "OWNER_LC=${OWNER,,}" >>${GITHUB_ENV}
+        env:
+          OWNER: '${{ github.repository_owner }}'
+
       - name: Checkout repository
         uses: actions/checkout@v2
 
@@ -37,7 +45,7 @@ jobs:
         uses: docker/login-action@28218f9b04b4f3f62068d7b6ce6ca5b26e35336c
         with:
           registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
+          username: ${{ env.OWNER_LC }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
       # Extract metadata (tags, labels) for Docker
