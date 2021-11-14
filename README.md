@@ -25,7 +25,7 @@
 [ccm2]: https://codeclimate.com/github/LeKovr/webtail/maintainability
 [ref1]: https://pkg.go.dev/badge/github.com/LeKovr/webtail.svg
 [ref2]: https://pkg.go.dev/github.com/LeKovr/webtail
-[cc1]: https://codecov.io/gh/LeKovr/webtail/branch/master/graph/badge.svg
+[cc1]: https://codecov.io/gh/LeKovr/webtail/branch/master/graph/badge.svg?token=y3bgG3Mp3g
 [cc2]: https://codecov.io/gh/LeKovr/webtail
 [gc1]: https://goreportcard.com/badge/github.com/LeKovr/webtail
 [gc2]: https://goreportcard.com/report/github.com/LeKovr/webtail
