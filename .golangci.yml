@@ -78,7 +78,6 @@ linters:
     - gosimple
     - govet
     - ineffassign
-    - interfacer
     - lll
     - misspell
     - nakedret
@@ -101,9 +100,8 @@ linters:
     - gocognit
     - gomodguard
 ##    - goheader
-    - maligned
 ##    - asciicheck
-    - gochecknoglobals
+##    - gochecknoglobals
 
 issues:
   exclude-rules:

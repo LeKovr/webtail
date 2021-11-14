@@ -9,11 +9,8 @@ steps:
   - git describe --tags --always > .version
 
 - name: test app
-  image: golang:1.17.1-alpine3.14
+  image: ghcr.io/dopos/golang-alpine:1.16.10-alpine3.14
   commands:
-  - go install github.com/phogolabs/parcello/cmd/parcello@v0.8.2
-  - go mod tidy
-  - go generate ./cmd/webtail/...
   - go test -tags test -covermode=atomic -coverprofile=coverage.out ./...
   - go vet ./...
   - apk add --no-cache curl bash git
@@ -34,26 +31,7 @@ steps:
   settings:
     repo: testbuild
     dry_run: true
-    build_args:
-      - GOLANG_VERSION=1.17.1-alpine3.14
   when:
     event:
       exclude:
       - tag
-
-- name: publish docker
-  image: plugins/docker
-  settings:
-    repo: ghcr.io/lekovr/${DRONE_REPO_NAME}
-    registry: https://ghcr.io
-    username: ${DRONE_REPO_OWNER}
-    password:
-      from_secret: my-docker-token
-    auto_tag: true
-    custom_labels: org.opencontainers.image.source=${DRONE_REPO_LINK}
-    label_schema: description="Tail [log]files via web"
-    build_args:
-      - GOLANG_VERSION=1.17.1-alpine3.14
-  when:
-    event:
-    - tag

@@ -16,6 +16,7 @@ RUN CGO_ENABLED=0 go build -ldflags "-X main.version=`git describe --tags --alwa
 FROM scratch
 
 MAINTAINER Alexey Kovrizhkin <lekovr+dopos@gmail.com>
+LABEL org.opencontainers.image.description "Tail [log]files via web[sockets]"
 
 VOLUME /data
 WORKDIR /

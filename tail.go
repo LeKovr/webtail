@@ -180,9 +180,8 @@ func (tw tailWorker) run(readyChan chan struct{}, wg *sync.WaitGroup) {
 				tw.out <- &TailMessage{Channel: tw.channel, Data: tw.tf.Err().Error(), Type: "error"}
 				<-tw.quit
 				return
-			} else {
-				tw.out <- &TailMessage{Channel: tw.channel, Data: line.Text, Type: "log"}
 			}
+			tw.out <- &TailMessage{Channel: tw.channel, Data: line.Text, Type: "log"}
 		case <-tw.quit:
 			err := tw.tf.Stop() // Cleanup()
 			if err != nil {

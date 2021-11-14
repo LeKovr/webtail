@@ -9,7 +9,6 @@ import (
 	stats_api "github.com/fukata/golang-stats-api-handler"
 
 	"github.com/LeKovr/webtail"
-//	"github.com/LeKovr/webtail/cmd/webtail/internal"
 )
 
 // Config holds all config vars
