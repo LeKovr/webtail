@@ -20,7 +20,7 @@ ARG TARGETARCH
 MAINTAINER Alexey Kovrizhkin <lekovr+dopos@gmail.com>
 LABEL org.opencontainers.image.description "Tail [log]files via web[sockets]"
 
-RUN echo "$TARGETARCH" > /webtail.arch
+# RUN echo "$TARGETARCH" > /webtail.arch
 
 VOLUME /data
 WORKDIR /
