@@ -1,7 +1,7 @@
 ARG GOLANG_VERSION
 
 # FROM golang:$GOLANG_VERSION as builder
-FROM ghcr.io/dopos/golang-alpine:1.16.10-alpine3.14 as builder
+FROM ghcr.io/dopos/golang-alpine:1.16.10-alpine3.14.2 as builder
 
 WORKDIR /opt/app
 

@@ -14,6 +14,9 @@ steps:
   - go test -tags test -covermode=atomic -coverprofile=coverage.out ./...
   - go vet ./...
   - apk add --no-cache curl bash git
+  - curl -Os https://uploader.codecov.io/latest/linux/codecov
+  - chmod +x codecov
+  - ./codecov -f coverage.out
   - curl -sSL https://codeclimate.com/downloads/test-reporter/test-reporter-latest-linux-amd64 > ./cc-test-reporter
   - chmod +x ./cc-test-reporter
   - ./cc-test-reporter format-coverage coverage.out -t gocov -p $${DRONE_REPO_LINK#https://}
