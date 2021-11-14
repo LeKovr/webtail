@@ -12,7 +12,6 @@
 [![Go Reference][ref1]][ref2]
  [![GitHub Release][gr1]][gr2]
  [![Build Status][bs1]][bs2]
- [![FOSSA Status][fs1]][fs2]
  [![GitHub license][gl1]][gl2]
 
 [![codecov][cc1]][cc2]
@@ -24,16 +23,14 @@
 [cct2]: https://codeclimate.com/github/LeKovr/webtail/test_coverage
 [ccm1]: https://api.codeclimate.com/v1/badges/909eca87d9ee5b216a6b/maintainability
 [ccm2]: https://codeclimate.com/github/LeKovr/webtail/maintainability
-[fs1]: https://app.fossa.com/api/projects/git%2Bgithub.com%2FLeKovr%2Fwebtail.svg?type=shield
-[fs2]: https://app.fossa.com/projects/git%2Bgithub.com%2FLeKovr%2Fwebtail?ref=badge_shield
 [ref1]: https://pkg.go.dev/badge/github.com/LeKovr/webtail.svg
 [ref2]: https://pkg.go.dev/github.com/LeKovr/webtail
 [cc1]: https://codecov.io/gh/LeKovr/webtail/branch/master/graph/badge.svg
 [cc2]: https://codecov.io/gh/LeKovr/webtail
 [gc1]: https://goreportcard.com/badge/github.com/LeKovr/webtail
 [gc2]: https://goreportcard.com/report/github.com/LeKovr/webtail
-[bs1]: https://cloud.drone.io/api/badges/LeKovr/webtail/status.svg
-[bs2]: https://cloud.drone.io/LeKovr/webtail
+[bs1]: https://github.com/LeKovr/webtail/actions/workflows/docker-publish.yml/badge.svg
+[bs2]: http://github.com/LeKovr/webtail/actions/workflows/docker-publish.yml
 [gr1]: https://img.shields.io/github/release/LeKovr/webtail.svg
 [gr2]: https://github.com/LeKovr/webtail/releases
 [gl1]: https://img.shields.io/github/license/LeKovr/webtail.svg
