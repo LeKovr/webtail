@@ -56,10 +56,6 @@ all: help
 ## Compile operations
 #:
 
-## Generate embedded html/
-gen:
-	$(GO) generate ./cmd/webtail/...
-
 ## Run lint
 lint:
 	@golint ./...
@@ -70,7 +66,7 @@ vet:
 	$(GO) vet ./...
 
 ## Run tests
-test: gen coverage.out
+test: coverage.out
 
 coverage.out: $(SOURCES)
 	$(GO) test -tags test -race -covermode=atomic -coverprofile=$@ ./...
@@ -80,7 +76,7 @@ cov-html: coverage.out
 	$(GO) tool cover -html=coverage.out
 
 ## Build app
-build: gen $(PRG)
+build: $(PRG)
 
 ## Build webtail command
 $(PRG): $(SOURCES)

@@ -9,7 +9,7 @@ import (
 	stats_api "github.com/fukata/golang-stats-api-handler"
 
 	"github.com/LeKovr/webtail"
-	"github.com/LeKovr/webtail/cmd/webtail/internal"
+//	"github.com/LeKovr/webtail/cmd/webtail/internal"
 )
 
 // Config holds all config vars
@@ -39,7 +39,7 @@ func Run(exitFunc func(code int)) {
 	if err != nil {
 		return
 	}
-	http.Handle("/", FileServer(cfg.HTML))
+	http.Handle("/", webtail.FileServer(cfg.HTML))
 	http.Handle("/tail", wt)
 	http.HandleFunc("/api/stats", stats_api.Handler)
 	log.Info("Listen", "addr", cfg.Listen)
@@ -55,12 +55,4 @@ func Run(exitFunc func(code int)) {
 	<-quit
 	wt.Close()
 	log.Info("Server stopped")
-}
-
-// FileServer return embedded or given fs
-func FileServer(path string) http.Handler {
-	if path != "" {
-		return http.FileServer(http.Dir(path))
-	}
-	return http.FileServer(internal.FS())
 }

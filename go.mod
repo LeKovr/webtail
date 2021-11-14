@@ -14,9 +14,9 @@ require (
 	github.com/jessevdk/go-flags v1.3.1-0.20170926144705-f88afde2fa19
 	github.com/mattn/go-colorable v0.1.8
 	github.com/nxadm/tail v1.4.4
-	github.com/phogolabs/parcello v0.8.2
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/stretchr/testify v1.6.1
 	github.com/wojas/genericr v0.2.0
 	go.uber.org/zap v1.16.0
+	gopkg.in/yaml.v2 v2.2.7 // indirect
 )
