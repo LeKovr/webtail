@@ -40,8 +40,6 @@
 
 ![Ping stream sample](screenshot.png)
 
-[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2FLeKovr%2Fwebtail.svg?type=large)](https://app.fossa.com/projects/git%2Bgithub.com%2FLeKovr%2Fwebtail?ref=badge_large)
-
 ## Install
 
 ```sh
