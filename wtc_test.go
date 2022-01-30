@@ -14,9 +14,9 @@ import (
 	"time"
 
 	"github.com/a8m/djson"
+	"github.com/go-logr/logr"
 	"github.com/gorilla/websocket"
 	"github.com/stretchr/testify/require"
-	"github.com/wojas/genericr"
 
 	"github.com/LeKovr/webtail"
 )
@@ -33,9 +33,7 @@ type WebTailClient struct {
 }
 
 func NewWebTailClient(t *testing.T, cfg *webtail.Config) (*WebTailClient, error) {
-	logger := genericr.New(func(e genericr.Entry) {
-		t.Log(e.String())
-	})
+	logger := logr.Discard()
 	wtServer, err := webtail.New(logger, cfg)
 	if err != nil {
 		return nil, err
