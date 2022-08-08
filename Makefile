@@ -16,7 +16,7 @@ GOLANG_VERSION = 1.15.5-alpine3.12
 
 OS            ?= linux
 ARCH          ?= amd64
-ALLARCH       ?= "linux/amd64 linux/386 darwin/amd64 linux/arm"
+ALLARCH       ?= "linux/amd64 linux/386 darwin/amd64 linux/arm linux/arm64"
 DIRDIST       ?= dist
 
 # Path to golang package docs
