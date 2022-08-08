@@ -16,7 +16,8 @@ env:
   REGISTRY: ghcr.io
   # github.repository as <account>/<repo>
   IMAGE_NAME: ${{ github.repository }}
-
+  # increase test timeout
+  GO_TEST_TIMEOUT_SCALE: 5
 
 jobs:
   build:
