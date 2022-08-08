@@ -1,8 +1,12 @@
 ARG GOLANG_VERSION
 
 # FROM golang:$GOLANG_VERSION as builder
-FROM ghcr.io/dopos/golang-alpine:v1.16.10-alpine3.14.2 as builder
+#FROM ghcr.io/dopos/golang-alpine:v1.16.10-alpine3.14.2 as builder
+FROM golang:1.19.0-alpine3.16 as builder
 ARG TARGETARCH
+
+# for docker.io/golang:1.18-alpine
+RUN apk --update add git
 
 WORKDIR /opt/app
 

@@ -62,9 +62,9 @@ func NewWebTailClient(t *testing.T, cfg *webtail.Config) (*WebTailClient, error)
 }
 
 func (wtc *WebTailClient) WaitSync(syncs int) {
-	for i := 0; i < syncs; i++ {
 		ticker := time.NewTicker(time.Duration(1) * time.Second)
 		defer ticker.Stop()
+	for i := 0; i < syncs; i++ {
 		select {
 		case <-wtc.feedBackChan:
 			wtc.t.Log("sync received")

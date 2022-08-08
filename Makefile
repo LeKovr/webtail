@@ -30,7 +30,8 @@ DOCKER_IMAGE  ?= ghcr.io/lekovr/$(PRG)
 # Hardcoded in docker-compose.yml service name
 DC_SERVICE    ?= app
 
-# docker-compose image version
+# docker-compose image and version
+DC_IMAGE      ?= docker/compose
 DC_VER        ?= latest
 
 # docker app for change inside containers
@@ -172,10 +173,9 @@ dc: docker-compose.yml
   --env=LOG_DIR=$(LOG_DIR) \
   --env=DOCKER_IMAGE=$(DOCKER_IMAGE) \
   --env=GOLANG_VERSION=$(GOLANG_VERSION) \
-  docker/compose:$(DC_VER) \
+  $(DC_IMAGE):$(DC_VER) \
   -p $(PRG) \
   "$(CMD)"
-
 # ------------------------------------------------------------------------------
 ## Other
 #:
