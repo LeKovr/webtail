@@ -52,7 +52,8 @@ func SetupLog(withDebug bool, opts ...zap.Option) logr.Logger {
 	var log logr.Logger
 	if withDebug {
 		aa := zap.NewDevelopmentEncoderConfig()
-		zo := append(opts, zap.AddCaller())
+		zo := opts
+		zo = append(zo, zap.AddCaller())
 		aa.EncodeLevel = zapcore.CapitalColorLevelEncoder
 		zapLog := zap.New(zapcore.NewCore(
 			zapcore.NewConsoleEncoder(aa),

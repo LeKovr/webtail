@@ -28,6 +28,7 @@ linters-settings:
     disabled-checks:
       - dupImport # https://github.com/go-critic/go-critic/issues/845
       - commentedOutCode # todo
+      - deferInLoop
   gocyclo:
     min-complexity: 15
   goimports:
@@ -71,7 +72,6 @@ linters:
     - gocyclo
     - gofmt
     - goimports
-    - golint
     - gomnd
     - goprintffuncname
     - gosec
@@ -81,10 +81,10 @@ linters:
     - lll
     - misspell
     - nakedret
-    - rowserrcheck
+    # - rowserrcheck
     # - scopelint
     - staticcheck
-    - structcheck
+    # - structcheck
     - stylecheck
     - typecheck
     - unconvert

@@ -133,7 +133,7 @@ func (ss *ServerSuite) TestTail() {
 	got = wtc.Call(&webtail.InMessage{Type: "attach", Channel: RootFile}, len(want), false)
 	require.Equal(ss.T(), want, got)
 
-	f, err = os.OpenFile(testFile, os.O_APPEND|os.O_WRONLY, 0644)
+	f, err = os.OpenFile(testFile, os.O_APPEND|os.O_WRONLY, 0o644)
 	require.NoError(ss.T(), err)
 	_, err = f.WriteString("test log row three\n")
 	require.NoError(ss.T(), err)
