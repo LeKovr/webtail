@@ -17,7 +17,7 @@ RUN echo "Build for arch $TARGETARCH"
 
 # Sources dependent layer
 COPY ./ ./
-RUN CGO_ENABLED=0 go test -tags test -covermode=atomic -coverprofile=coverage.out ./...
+RUN CGO_ENABLED=0 go test -timeout 40m -tags test -covermode=atomic -coverprofile=coverage.out ./...
 RUN CGO_ENABLED=0 go build -ldflags "-X main.version=`git describe --tags --always`" -a ./cmd/webtail
 
 FROM scratch
