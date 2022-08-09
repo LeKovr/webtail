@@ -187,7 +187,7 @@ godoc:
 
 ## update latest docker image tag at ghcr.io
 ghcr:
-	vf=$(APP_VERSION) ; vs=$${vf%%-*} ; v=$${vs#v} ; echo "Update for $$v..." ; \
+	v=$(APP_VERSION) ; echo "Update for $$v..." ; \
 	docker pull $(DOCKER_IMAGE):$$v && \
 	docker tag $(DOCKER_IMAGE):$$v $(DOCKER_IMAGE):latest && \
 	docker push $(DOCKER_IMAGE):latest
