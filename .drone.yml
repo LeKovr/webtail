@@ -9,15 +9,15 @@ steps:
   - git describe --tags --always > .version
 
 - name: test app
-  image: ghcr.io/dopos/golang-alpine:1.16.10-alpine3.14
+  image: ghcr.io/dopos/golang-alpine:v1.18.5-alpine3.16.2
   commands:
-  - go test -tags test -covermode=atomic -coverprofile=coverage.out ./...
+  - go test -tags test -covermode=atomic -coverprofile=coverage.txt ./...
   - go vet ./...
   - apk add --no-cache curl bash git
   - curl -sS https://codecov.io/bash | bash
   - curl -sSL https://codeclimate.com/downloads/test-reporter/test-reporter-latest-linux-amd64 > ./cc-test-reporter
   - chmod +x ./cc-test-reporter
-  - ./cc-test-reporter format-coverage coverage.out -t gocov -p $${DRONE_REPO_LINK#https://}
+  - ./cc-test-reporter format-coverage coverage.txt -t gocov -p $${DRONE_REPO_LINK#https://}
   - ./cc-test-reporter upload-coverage
   environment:
     CGO_ENABLED: 0
@@ -25,13 +25,3 @@ steps:
       from_secret: my-codecov-token
     CC_TEST_REPORTER_ID:
       from_secret: my-codeclimate-token
-
-- name: test docker build
-  image: plugins/docker
-  settings:
-    repo: testbuild
-    dry_run: true
-  when:
-    event:
-      exclude:
-      - tag
