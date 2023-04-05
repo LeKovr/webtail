@@ -18,8 +18,16 @@ env:
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
-  build:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses actions/checkout@v3
+      - uses: actions/setup-go@v3
+      - uses: n8maninger/action-golang-test@v1
+        with:
+          args: "-race;-failfast;-tags=test;-covermode=atomic;-coverprofile=coverage.txt"
 
+  build:
     runs-on: ubuntu-latest
     permissions:
       contents: read
