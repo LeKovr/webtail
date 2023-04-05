@@ -72,9 +72,17 @@ test: coverage.out
 coverage.out: $(SOURCES)
 	$(GO) test -tags test -race -covermode=atomic -coverprofile=$@ ./...
 
-## Show package coverage in html (make cov-html PKG=counter)
+## Show code coverage in html (make cov-html PKG=counter)
 cov-html: coverage.out
 	$(GO) tool cover -html=coverage.out
+
+## Show code coverage per func
+cov-func: coverage.out
+	$(GO) tool cover -func coverage.out
+
+## Show total code coverage
+cov-total: coverage.out
+	@$(GO) tool cover -func coverage.out | grep total: | awk '{print $$3}'
 
 ## Build app
 build: $(PRG)
