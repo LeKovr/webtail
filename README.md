@@ -9,14 +9,12 @@
 
 ---
 
-[![Go Coverage](https://github.com/LeKovr/webtail/wiki/coverage.svg)](https://raw.githack.com/wiki/LeKovr/webtail/coverage.html)
-
 [![Go Reference][ref1]][ref2]
  [![GitHub Release][gr1]][gr2]
  [![Build Status][bs1]][bs2]
  [![GitHub license][gl1]][gl2]
 
-[![codecov][cc1]][cc2]
+[![Go Coverage][cc1]][cc2]
  [![Test Coverage][cct1]][cct2]
  [![Maintainability][ccm1]][ccm2]
  [![GoCard][gc1]][gc2]
@@ -27,8 +25,8 @@
 [ccm2]: https://codeclimate.com/github/LeKovr/webtail/maintainability
 [ref1]: https://pkg.go.dev/badge/github.com/LeKovr/webtail.svg
 [ref2]: https://pkg.go.dev/github.com/LeKovr/webtail
-[cc1]: https://codecov.io/gh/LeKovr/webtail/branch/master/graph/badge.svg?token=y3bgG3Mp3g
-[cc2]: https://codecov.io/gh/LeKovr/webtail
+[cc1]: https://github.com/LeKovr/webtail/wiki/coverage.svg
+[cc2]: https://raw.githack.com/wiki/LeKovr/webtail/coverage.html
 [gc1]: https://goreportcard.com/badge/github.com/LeKovr/webtail
 [gc2]: https://goreportcard.com/report/github.com/LeKovr/webtail
 [bs1]: https://github.com/LeKovr/webtail/actions/workflows/docker-publish.yml/badge.svg
