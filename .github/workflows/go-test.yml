@@ -9,7 +9,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - uses: actions/setup-go@v3
-      - uses: n8maninger/action-golang-test@v1
+      - name: Set up Go
+        uses: actions/setup-go@v3
         with:
-          args: "-race;-failfast;-tags=test;-covermode=atomic;-coverprofile=coverage.txt"
+          go-version: 1.19
+
+      - name: Test
+        run: go test -v ./...
+
+      - name: Update coverage report
+        uses: ncruces/go-coverage-report@v0
+        with:
+          report: 'true'
+          chart: 'true'
+          amend: 'false'
+        if: |
+          github.event_name == 'push'
+        continue-on-error: true
