@@ -9,6 +9,8 @@
 
 ---
 
+[![Go Coverage](https://github.com/LeKovr/webtail/wiki/coverage.svg)](https://raw.githack.com/wiki/LeKovr/webtail/coverage.html)
+
 [![Go Reference][ref1]][ref2]
  [![GitHub Release][gr1]][gr2]
  [![Build Status][bs1]][bs2]
