@@ -60,7 +60,6 @@ linters:
   disable-all: true
   enable:
     - bodyclose
-    - deadcode
     - depguard
     - dogsled
     - dupl
@@ -81,27 +80,17 @@ linters:
     - lll
     - misspell
     - nakedret
-    # - rowserrcheck
-    # - scopelint
     - staticcheck
-    # - structcheck
     - stylecheck
     - typecheck
     - unconvert
     - unparam
     - unused
-    - varcheck
     - whitespace
-    # - wsl
     - prealloc
     - godox
-##    - exhaustive
-##    - gci
     - gocognit
     - gomodguard
-##    - goheader
-##    - asciicheck
-##    - gochecknoglobals
 
 issues:
   exclude-rules:
@@ -115,4 +104,4 @@ issues:
 # golangci.com configuration
 # https://github.com/golangci/golangci/wiki/Configuration
 service:
-  golangci-lint-version: 1.23.x # use the fixed version to not introduce new linters unexpectedly
+  golangci-lint-version: 1.52.x # use the fixed version to not introduce new linters unexpectedly

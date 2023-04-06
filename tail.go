@@ -3,6 +3,7 @@ package webtail
 // This file holds directory file tail methods
 
 import (
+	"io"
 	"os"
 	"path"
 	"path/filepath"
@@ -142,7 +143,7 @@ func (ts *TailService) TailerRun(channel string, out chan *TailMessage, readyCha
 		// get the file size
 		size := fi.Size()
 		if size > cfg.Bytes {
-			config.Location = &tail.SeekInfo{Offset: -cfg.Bytes, Whence: os.SEEK_END}
+			config.Location = &tail.SeekInfo{Offset: -cfg.Bytes, Whence: io.SeekEnd}
 			headTrimmed = true
 		}
 	}

@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	stats_api "github.com/fukata/golang-stats-api-handler"
 
@@ -47,7 +48,13 @@ func Run(exitFunc func(code int)) {
 	go wt.Run()
 	go func() {
 		// service connections
-		if err = http.ListenAndServe(cfg.Listen, nil); err != nil && err != http.ErrServerClosed {
+		s := &http.Server{
+			Addr:           cfg.Listen,
+			ReadTimeout:    10 * time.Second,
+			WriteTimeout:   10 * time.Second,
+			MaxHeaderBytes: 1 << 20,
+		}
+		if err = s.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			quit <- os.Interrupt
 		}
 	}()
