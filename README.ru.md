@@ -4,7 +4,8 @@
 
 <p align="center">
   <a href="README.md#readme">English</a> |
-  <span>Pусский</span>
+  <span>Pусский</span> |
+  <a href="README.ja.md#readme">日本語</a>
 </p>
 
 ---
