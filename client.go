@@ -56,7 +56,10 @@ func (c *Client) runReadPump(wg *sync.WaitGroup, quit chan *Client, inbox chan *
 	wg.Add(1)
 	defer func() {
 		quit <- c
-		c.conn.Close()
+		err := c.conn.Close()
+		if err != nil {
+			c.log.Error(err, "ReadPump conn Close")
+		}
 		wg.Done()
 	}()
 	c.conn.SetReadLimit(maxMessageSize)
@@ -90,7 +93,10 @@ func (c *Client) runWritePump(wg *sync.WaitGroup) {
 	ticker := time.NewTicker(pingPeriod)
 	defer func() {
 		ticker.Stop()
-		c.conn.Close()
+		err := c.conn.Close()
+		if err != nil {
+			c.log.Error(err, "WritePump conn Close")
+		}
 		defer wg.Done()
 	}()
 	for {
