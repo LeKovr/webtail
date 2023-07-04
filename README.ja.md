@@ -49,7 +49,7 @@ go get -v github.com/LeKovr/webtail/...
 
 ### ダウンロード バイナリ
 
-See [Latest release](https://github.com/LeKovr/webtail/releases/latest)
+[最新リリース](https://github.com/LeKovr/webtail/releases/latest)を参照
 
 ### Docker
 
