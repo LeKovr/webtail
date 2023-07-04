@@ -29,8 +29,8 @@
 [cc2]: https://codecov.io/gh/LeKovr/webtail
 [gc1]: https://goreportcard.com/badge/github.com/LeKovr/webtail
 [gc2]: https://goreportcard.com/report/github.com/LeKovr/webtail
-[bs1]: https://cloud.drone.io/api/badges/LeKovr/webtail/status.svg
-[bs2]: https://cloud.drone.io/LeKovr/webtail
+[bs1]: https://github.com/LeKovr/webtail/actions/workflows/docker-publish.yml/badge.svg
+[bs2]: http://github.com/LeKovr/webtail/actions/workflows/docker-publish.yml
 [gr1]: https://img.shields.io/github/release/LeKovr/webtail.svg
 [gr2]: https://github.com/LeKovr/webtail/releases
 [gl1]: https://img.shields.io/github/license/LeKovr/webtail.svg
