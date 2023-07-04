@@ -1,11 +1,11 @@
 # webtail
 
-> Tail [log]files via websocket
+> websocket 経由で [log] ファイルを Tail する
 
 <p align="center">
-  <span>English</span> |
+  <a href="README.md#readme">English</a> |
   <a href="README.ru.md#readme">Pусский</a> |
-  <a href="README.ja.md#readme">日本語</a>
+  <span>日本語</span>
 </p>
 
 ---
@@ -37,33 +37,33 @@
 [gl1]: https://img.shields.io/github/license/LeKovr/webtail.svg
 [gl2]: https://github.com/LeKovr/webtail/blob/master/LICENSE
 
-[webtail](https://github.com/LeKovr/webtail) is a web-service and golang package used for continious updated files publication via websocker to browser.
+[webtail](https://github.com/LeKovr/webtail) はウェブサービスと golang パッケージで、websocker 経由で継続的に更新されたファイルをブラウザに公開するために使われます。
 
 ![Ping stream sample](screenshot.png)
 
-## Install
+## インストール
 
 ```sh
 go get -v github.com/LeKovr/webtail/...
 ```
 
-### Download binary
+### ダウンロード バイナリ
 
-See [Latest release](https://github.com/LeKovr/webtail/releases/latest)
+[最新リリース](https://github.com/LeKovr/webtail/releases/latest)を参照
 
 ### Docker
 
-Starting from 0.43.2 docker images are published at [GitHub Packages](https://ghcr.io), so use
+0.43.2 以降の docker イメージは、[GitHub Packages](https://ghcr.io) で公開されています
 
 ```sh
 docker pull ghcr.io/lekovr/webtail:latest
 ```
 
-See [docker-compose.yml](docker-compose.yml) for usage example.
+使用例は [docker-compose.yml](docker-compose.yml) を参照。
 
-v0.43.1 is the [last version available at dockerhub](https://hub.docker.com/repository/docker/lekovr/webtail/tags).
+v0.43.1 は [dockerhub で利用可能な最後のバージョン](https://hub.docker.com/repository/docker/lekovr/webtail/tags)です。
 
-## Use package in your service
+## サービスでパッケージを使用する
 
 ```go
 package main
@@ -83,14 +83,14 @@ func main() {
 }
 ```
 
-See also: [app.go](https://github.com/LeKovr/webtail/blob/master/cmd/webtail/app.go)
+こちらも参照: [app.go](https://github.com/LeKovr/webtail/blob/master/cmd/webtail/app.go)
 
-## Note about gorilla/websocket
+## gorilla/websocket に関する注意事項
 
-Starting from v0.30 this code is based on [gorilla/websocket chat example](https://github.com/gorilla/websocket/tree/master/examples/chat). See {client,hub}.go
+v0.30 から、このコードは [gorilla/websocket チャット例](https://github.com/gorilla/websocket/tree/master/examples/chat)に基づいています。{client,hub}.go を参照
 
-## License
+## ライセンス
 
-The MIT License (MIT), see [LICENSE](LICENSE).
+MIT ライセンス (MIT)、[LICENSE](LICENSE) を参照のこと。
 
 Copyright (c) 2016-2021 Aleksey Kovrizhkin <lekovr+webtail@gmail.com>
