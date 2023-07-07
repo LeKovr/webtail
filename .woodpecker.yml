@@ -1,27 +1,57 @@
-kind: pipeline
-name: ci
 
-steps:
-- name: fetch tags
-  image: alpine/git
-  commands:
-  - git fetch --tags
-  - git describe --tags --always > .version
+# lint this file
+# go run github.com/woodpecker-ci/woodpecker/cmd/cli lint
 
-- name: test app
-  image: ghcr.io/dopos/golang-alpine:v1.18.6-alpine3.16.2
-  commands:
-  - go test -tags test -covermode=atomic -coverprofile=coverage.txt ./...
-  - go vet ./...
-  - apk add --no-cache curl bash git
-  - curl -sS https://codecov.io/bash | bash
-  - curl -sSL https://codeclimate.com/downloads/test-reporter/test-reporter-latest-linux-amd64 > ./cc-test-reporter
-  - chmod +x ./cc-test-reporter
-  - ./cc-test-reporter format-coverage coverage.txt -t gocov -p $${DRONE_REPO_LINK#https://}
-  - ./cc-test-reporter upload-coverage
-  environment:
-    CGO_ENABLED: 0
-    CODECOV_TOKEN:
-      from_secret: my-codecov-token
-    CC_TEST_REPORTER_ID:
-      from_secret: my-codeclimate-token
+variables:
+#    - &build_plugin 'woodpeckerci/plugin-docker-buildx'
+    - &build_plugin 'plugins/docker'
+    - &golint_img 'golangci/golangci-lint:v1.53-alpine'
+    - &golang_img 'ghcr.io/dopos/golang-alpine:v1.19.7-alpine3.17.2'
+    - base_settings: &base_buildx_settings
+        registry: it.elfire.ru
+        repo: it.elfire.ru/${CI_REPO_OWNER}/${CI_REPO_NAME}
+
+clone:
+  git:
+    image: woodpeckerci/plugin-git
+    settings:
+      lfs: false
+      tags: true
+
+pipeline:
+
+  test:
+    image: *golang_img
+    commands: make test
+
+  lint:
+    image: *golint_img
+    commands: golangci-lint run
+
+  build:
+    image: *golang_img
+    commands:
+      - make build-standalone
+
+  publish-dryrun:
+    image: *build_plugin
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    settings:
+      <<: *base_buildx_settings
+      dry_run: true
+
+  publish:
+    image: *build_plugin
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    settings:
+      <<: *base_buildx_settings
+      auto_tag: true
+      custom_labels: org.opencontainers.image.version=${CI_COMMIT_TAG##v}
+      username: ${CI_REPO_OWNER}
+      password:
+        from_secret: cb_token
+    when:
+      event: tag
+      ref: refs/tags/v*

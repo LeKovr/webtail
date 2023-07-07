@@ -61,7 +61,8 @@ jobs:
         uses: docker/build-push-action@v4
         with:
           context: .
-          # (ARMv7 requires too much resourses) platforms: linux/amd64, linux/arm/v7, linux/arm64
+          # we do not use github hardware for multiarch builds
+          # we use "make docker-multi" instead
           platforms: linux/amd64
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}

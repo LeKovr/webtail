@@ -1,32 +1,31 @@
-ARG GOLANG_VERSION
+ARG GOLANG_IMAGE=ghcr.io/dopos/golang-alpine
+ARG GOLANG_VERSION=v1.19.7-alpine3.17.2
+ARG APP=webtail
 
-# FROM golang:$GOLANG_VERSION as builder
-#FROM ghcr.io/dopos/golang-alpine:v1.16.10-alpine3.14.2 as builder
-FROM golang:1.19.7-alpine3.17 as builder
-ARG TARGETARCH
+FROM --platform=$BUILDPLATFORM ${GOLANG_IMAGE}:${GOLANG_VERSION} as build
 
-# for docker.io/golang:1.18-alpine
-RUN apk --update add git
+ARG APP
 
-WORKDIR /opt/app
+COPY . /src/$APP
+WORKDIR /src/$APP
 
-# Cached layer
-COPY ./go.mod ./go.sum ./
-
-RUN echo "Build for arch $TARGETARCH"
-
-# Sources dependent layer
-COPY ./ ./
-RUN CGO_ENABLED=0 go test -timeout 10m -tags test -covermode=atomic -coverprofile=coverage.out ./...
-RUN CGO_ENABLED=0 go build -ldflags "-X main.version=`git describe --tags --always`" -a ./cmd/webtail
+ARG GOPROXY TARGETOS TARGETARCH
+RUN --mount=type=cache,id=gobuild,target=/root/.cache/go-build \
+    --mount=type=cache,id=gomod,target=/go/pkg \
+    make build-standalone
 
 FROM scratch
 
-MAINTAINER Alexey Kovrizhkin <lekovr+dopos@gmail.com>
-LABEL org.opencontainers.image.description "Tail [log]files via web[sockets]"
+LABEL org.opencontainers.image.title="webtail" \
+      org.opencontainers.image.description="Tail [log]files via web[sockets]" \
+      org.opencontainers.image.authors="lekovr+dopos@gmail.com" \
+      org.opencontainers.image.licenses="MIT"
 
 VOLUME /data
 WORKDIR /
-COPY --from=builder /opt/app/webtail .
+
+ARG APP
+
+COPY --from=build /src/$APP/$APP /app
 EXPOSE 8080
-ENTRYPOINT ["/webtail"]
+ENTRYPOINT [ "/app" ]

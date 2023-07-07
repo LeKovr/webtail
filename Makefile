@@ -4,15 +4,18 @@
 
 SHELL          = /bin/sh
 PRG           ?= $(shell basename $$PWD)
-
+PRG_DEST      ?= $(PRG)
 # -----------------------------------------------------------------------------
 # Build config
 
 GO            ?= go
-# not supported in BusyBox v1.26.2
-SOURCES        = $(shell find . -maxdepth 3 -mindepth 1 -name '*.go'  -printf '%p\n')
+SOURCES        = $(shell find . -maxdepth 3 -mindepth 1 -path ./var -prune -o -name '*.go')
 APP_VERSION   ?= $(shell git describe --tags --always)
-GOLANG_VERSION = 1.15.5-alpine3.12
+GOLANG_VERSION = v1.19.7-alpine3.17.2
+
+TARGETOS      ?= linux
+TARGETARCH    ?= amd64
+LDFLAGS       := -s -w -extldflags '-static'
 
 OS            ?= linux
 ARCH          ?= amd64
@@ -59,15 +62,19 @@ all: help
 
 ## Run lint
 lint:
+	@which golint > /dev/null || go install golang.org/x/lint/golint@latest
 	@golint ./...
+
+## Run golangci-lint
+ci-lint:
 	@golangci-lint run ./...
 
 ## Run vet
 vet:
-	$(GO) vet ./...
+	@$(GO) vet ./...
 
 ## Run tests
-test: coverage.out
+test: lint vet coverage.out
 
 coverage.out: $(SOURCES)
 	$(GO) test -tags test -race -covermode=atomic -coverprofile=$@ ./...
@@ -93,9 +100,10 @@ $(PRG): $(SOURCES)
 	  "-X main.version=$(APP_VERSION)" ./cmd/$@
 
 ## Build like docker image from scratch
-build-standalone: lint vet test
-	GOOS=linux CGO_ENABLED=0 $(GO) build -a -v -o $(PRG) -ldflags \
-	  "-X main.version=$(APP_VERSION)" ./cmd/$(PRG)
+build-standalone: test
+	CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
+	  $(GO) build -a -o $(PRG_DEST) -ldflags "${LDFLAGS} -X main.version=$(APP_VERSION)" \
+	  ./cmd/$(PRG)
 
 ## build and run in foreground
 run: build
@@ -118,8 +126,7 @@ buildall: lint vet
 	  for a in "$(ALLARCH)" ; do \
 	    echo "** $${a%/*} $${a#*/}" ; \
 	    P=$(PRG)-$${a%/*}_$${a#*/} ; \
-	    GOOS=$${a%/*} GOARCH=$${a#*/} $(GO) build -o $$P -ldflags \
-	      "-X main.version=$(APP_VERSION)" ./cmd/$(PRG) ; \
+	    $(MAKE) -s build-standalone TARGETOS=$${a%/*} TARGETARCH=$${a#*/} PRG_DEST=$$P ; \
 	  done
 
 ## create disro files
@@ -131,7 +138,7 @@ dist: clean buildall
 	    echo "** $${a%/*} $${a#*/}" ; \
 	    P=$(PRG)-$${a%/*}_$${a#*/} ; \
 	    zip "$(DIRDIST)/$$P.zip" "$$P" README.md README.ru.md screenshot.png; \
-        rm "$$P" ; \
+	    rm "$$P" ; \
 	  done
 
 
@@ -199,6 +206,23 @@ ghcr:
 	docker pull $(DOCKER_IMAGE):$$v && \
 	docker tag $(DOCKER_IMAGE):$$v $(DOCKER_IMAGE):latest && \
 	docker push $(DOCKER_IMAGE):latest
+
+# linux/amd64, linux/amd64/v2, linux/amd64/v3, linux/arm64, linux/riscv64, linux/ppc64le, linux/s390x, linux/386, 
+# linux/mips64le, linux/mips64, linux/arm/v7, linux/arm/v6
+
+ALLARCH_DOCKER ?= "linux/arm/v7,linux/arm64"
+
+OWN_HUB ?= it.elfire.ru
+
+buildkit.toml:
+	@echo [registry."$(OWN_HUB)"] > $@
+	@echo ca=["/etc/docker/certs.d/$(OWN_HUB)/ca.crt"] >> $@
+
+use-own-hub: buildkit.toml
+	@docker buildx create --use --config $<
+
+docker-multi:
+	time docker buildx build --platform $(ALLARCH_DOCKER) -t $(DOCKER_IMAGE):$(APP_VERSION) --push .
 
 # This code handles group header and target comment with one or two lines only
 ## list Makefile targets
