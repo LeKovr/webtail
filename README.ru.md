@@ -93,4 +93,4 @@ func main() {
 
 Исходный код проекта лицензирован под MIT, см [LICENSE](LICENSE).
 
-Copyright (c) 2016-2021 Алексей Коврижкин <lekovr+webtail@gmail.com>
+Copyright (c) 2016-2023 Алексей Коврижкин <lekovr+webtail@gmail.com>

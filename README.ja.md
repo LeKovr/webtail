@@ -93,4 +93,4 @@ v0.30 から、このコードは [gorilla/websocket チャット例](https://gi
 
 MIT ライセンス (MIT)、[LICENSE](LICENSE) を参照のこと。
 
-Copyright (c) 2016-2021 Aleksey Kovrizhkin <lekovr+webtail@gmail.com>
+Copyright (c) 2016-2023 Aleksey Kovrizhkin <lekovr+webtail@gmail.com>
