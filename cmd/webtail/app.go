@@ -18,8 +18,8 @@ import (
 
 // Config holds all config vars
 type Config struct {
-	Listen   string `long:"listen"      default:":8080"   description:"Http listen address"`
-	HTML     string `long:"html"        default:""        description:"Serve pages from this path"`
+	Listen string `long:"listen"      default:":8080"   description:"Http listen address"`
+	HTML   string `long:"html"        default:""        description:"Serve pages from this path"`
 
 	Logger logger.Config  `group:"Logging Options" namespace:"log" env-namespace:"LOG"`
 	Tail   webtail.Config `group:"Webtail Options"`
@@ -45,14 +45,6 @@ func Run(exitFunc func(code int)) {
 	log := logger.New(cfg.Logger, nil)
 	log.Info("WebTail. Tail (log)files via web.", "v", version)
 
-/*
-	cfg, err := SetupConfig()
-	log := SetupLog(err != nil || cfg.Debug)
-	defer func() { Shutdown(exitFunc, err, log) }()
-	if err != nil || cfg.Version {
-		return
-	}
-*/
 	var wt *webtail.Service
 	wt, err = webtail.New(log, &cfg.Tail)
 	if err != nil {
