@@ -102,7 +102,7 @@ function titleUnread(s) {
 function tail(file) {
     WebTail.file = file;
     titleReset();
-    $('#tail-top').find('[rel="title"]')[0].innerHTML = file;
+    $('#tail-top').find('[rel="title"]')[0].innerText = file;
     var m = JSON.stringify({ type: 'attach', channel: file })
     window.console.debug("send: " + m);
     WebTail.ws.send(m);
