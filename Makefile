@@ -9,9 +9,14 @@ PRG_DEST      ?= $(PRG)
 # Build config
 
 GO            ?= go
+GOLANG_VERSION = v1.19.7-alpine3.17.2
+
 SOURCES        = $(shell find . -maxdepth 3 -mindepth 1 -path ./var -prune -o -name '*.go')
 APP_VERSION   ?= $(shell git describe --tags --always)
-GOLANG_VERSION = v1.19.7-alpine3.17.2
+# Last project tag (used in `make changelog`)
+RELEASE       ?= $(shell git describe --tags --abbrev=0 --always)
+# Repository address (compiled into main.repo)
+REPO          ?= $(shell git config --get remote.origin.url)
 
 TARGETOS      ?= linux
 TARGETARCH    ?= amd64
@@ -60,6 +65,31 @@ all: help
 ## Compile operations
 #:
 
+## Build app
+build: $(PRG)
+
+$(PRG): $(SOURCES)
+	GOOS=$(OS) GOARCH=$(ARCH) $(GO) build -v -o $@ -ldflags \
+	  "-X main.version=$(APP_VERSION) -X main.repo=$(REPO)" ./cmd/$@
+
+## Build like docker image from scratch
+build-standalone: test
+	CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
+	  $(GO) build -a -o $(PRG_DEST) \
+	  -ldflags "${LDFLAGS} -X main.version=$(APP_VERSION) -X main.repo=$(REPO)" \
+	  ./cmd/$(PRG)
+
+## build and run in foreground
+run: $(PRG)
+	./$(PRG) --log.debug --root log/ --html html --trace
+
+run-abs: $(PRG)
+	./$(PRG) --log.debug --root $$PWD/log/ --html html --trace
+
+## Format go sources
+fmt:
+	$(GO) fmt ./...
+
 ## Run lint
 lint:
 	@which golint > /dev/null || go install golang.org/x/lint/golint@latest
@@ -76,6 +106,7 @@ vet:
 ## Run tests
 test: lint vet coverage.out
 
+# internal target
 coverage.out: $(SOURCES)
 	$(GO) test -tags test -race -covermode=atomic -coverprofile=$@ ./...
 
@@ -90,31 +121,15 @@ cov-func: coverage.out
 ## Show total code coverage
 cov-total: coverage.out
 	@$(GO) tool cover -func coverage.out | grep total: | awk '{print $$3}'
-
-## Build app
-build: $(PRG)
-
-## Build webtail command
-$(PRG): $(SOURCES)
-	GOOS=$(OS) GOARCH=$(ARCH) $(GO) build -v -o $@ -ldflags \
-	  "-X main.version=$(APP_VERSION)" ./cmd/$@
-
-## Build like docker image from scratch
-build-standalone: test
-	CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
-	  $(GO) build -a -o $(PRG_DEST) -ldflags "${LDFLAGS} -X main.version=$(APP_VERSION)" \
-	  ./cmd/$(PRG)
-
-## build and run in foreground
-run: build
-	./$(PRG) --debug --root log/ --html html --trace
-
-run-abs: build
-	./$(PRG) --debug --root $$PWD/log/ --html html --trace
-
 doc:
 	@echo "Open http://localhost:6060/pkg/LeKovr/webtail"
 	@godoc -http=:6060
+
+## Changes from last tag
+changelog:
+	@echo Changes since $(RELEASE)
+	@echo
+	@git log $(RELEASE)..@ --pretty=format:"* %s"
 
 # ------------------------------------------------------------------------------
 ## Prepare distros
