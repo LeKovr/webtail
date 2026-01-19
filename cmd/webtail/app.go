@@ -50,7 +50,7 @@ func Run(exitFunc func(code int)) {
 	if err != nil {
 		return
 	}
-	go ver.Check(log, repo, version)
+	go ver.Check(repo, version)
 	http.Handle("/", webtail.FileServer(cfg.HTML))
 	http.Handle("/tail", wt)
 	http.HandleFunc("/api/stats", stats_api.Handler)
