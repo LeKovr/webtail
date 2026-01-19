@@ -1,113 +1,105 @@
-# https://github.com/xelaj/mtproto/blob/main/.golangci.yml
+version: "2"
 
-run:
-  issues-exit-code: 1
-  timeout: 5m
 
-linters-settings:
-  depguard:
-    list-type: blacklist
-    packages:
-      - github.com/sirupsen/logrus
-      - log
-  dupl:
-    threshold: 100
-  funlen:
-    lines: 100
-    statements: 50
-  goconst:
-    min-len: 3
-    min-occurrences: 2
-  gocritic:
-    enabled-tags:
-      - diagnostic
-      - experimental
-      - opinionated
-      - performance
-      - style
-    disabled-checks:
-      - dupImport # https://github.com/go-critic/go-critic/issues/845
-      - commentedOutCode # todo
-      - deferInLoop
-  gocyclo:
-    min-complexity: 15
-  goimports:
-    local-prefixes: github.com/golangci/golangci-lint
-  golint:
-    min-confidence: 0
-  gomnd:
-    settings:
-      mnd:
-        # don't include the "operation" and "assign"
-        checks: [argument, case, condition, return]
-  govet:
-    check-shadowing: true
-  lll:
-    line-length: 140
-  maligned:
-    suggest-new: true
-  misspell:
-    locale: US
-  gofumpt:
-    lang-version: "1.20"
-    extra-rules: true
-  forbidigo:
-    forbid:
-      - context\.WithCancel$
-      - ^print.*$
-      - panic
-  errorlint:
-    errorf-multi: true
 linters:
-  disable-all: true
-  enable:
-    - bodyclose
-#    - depguard
-    - dogsled
-    - dupl
-    - errcheck
-#    - errorlint
-#    - forbidigo
-    - funlen
-    - gochecknoinits
-    - goconst
+  default: all
+  disable:
+    - lll
+    - intrange
+    - gomoddirectives
+    - godox
     - gocritic
-    - gocyclo
+    - gochecknoinits
+    - gochecknoglobals
+    - forbidigo
+    - fatcontext
+    - exhaustruct
+    - err113
+    - cyclop
+    - perfsprint
+
+    - contextcheck
+    - depguard
+    - funlen
+    - nestif
+    - varnamelen
+
+    - wrapcheck # TODO
+
+    - rowserrcheck # not relevant (SQL)
+    - sqlclosecheck # not relevant (SQL)
+  settings:
+    govet:
+      enable-all: true
+      disable:
+        - fieldalignment
+    gocyclo:
+      min-complexity: 16
+    goconst:
+      min-len: 3
+      min-occurrences: 3
+    misspell:
+      locale: US
+    funlen:
+      lines: -1
+      statements: 40
+    depguard:
+      rules:
+        main:
+          deny:
+            - pkg: "github.com/instana/testify"
+              desc: not allowed
+            - pkg: "github.com/pkg/errors"
+              desc: Should be replaced by standard lib errors package
+    godox:
+      keywords:
+        - FIXME
+    gocritic:
+      enabled-tags:
+        - diagnostic
+        - style
+        - performance
+      disabled-checks:
+        - sloppyReassign
+        - rangeValCopy
+        - octalLiteral
+        - paramTypeCombine # already handle by gofumpt.extra-rules
+      settings:
+        hugeParam:
+          sizeThreshold: 100
+
+formatters:
+  enable:
+    - gci
     - gofmt
     - gofumpt
     - goimports
-    - gomnd
-    - goprintffuncname
-    - gosec
-    - gosimple
-    - govet
-    - ineffassign
-    - lll
-    - misspell
-    - nakedret
-    - revive
-    - staticcheck
-    - stylecheck
-    - typecheck
-    - unconvert
-    - unparam
-    - unused
-    - whitespace
-    - prealloc
-    - godox
-    - gocognit
-    - gomodguard
-
+#    - golines
+  settings:
+    gci:
+      sections:
+        - standard                          # Standard section: captures all standard packages.
+        - default                           # Default section: contains all imports that could not be matched to another section type.
+        - localmodule                       # Put imports from local packages in a separate group
 issues:
-  exclude-rules:
-    # Exclude some linters from running on tests files.
-    - path: _test\.go
-      linters:
-        - gosec
-        - gomnd
-        - errcheck
+  max-issues-per-linter: 0
+  max-same-issues: 0
+  uniq-by-line: true
 
-# golangci.com configuration
-# https://github.com/golangci/golangci/wiki/Configuration
-service:
-  golangci-lint-version: 1.52.x # use the fixed version to not introduce new linters unexpectedly
+output:
+  formats:
+    text:
+      path: stdout
+      colors: true
+      print-linter-name: true
+      print-issued-lines: true
+    checkstyle:
+      path: golangci-lint-report.xml
+  sort-order:
+    - linter
+    - severity
+    - file
+  show-stats: true
+run:
+  timeout: 5m  # Таймаут выполнения линтера
+  tests: false  # Не включать файлы тестов
