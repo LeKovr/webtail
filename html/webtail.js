@@ -55,7 +55,7 @@ function showFiles(file) {
     var f = file;
 
     var p = row.clone();
-    var path = '&nbsp;';
+    var path = '';
     var a = splitter.exec(f.name); // split file dir and name
     if (a !== null) {
         p.find('[rel="link"]').text(a[2]);
@@ -78,7 +78,12 @@ function showFiles(file) {
         //      $('#'+id).parent().replaceWith(p);
     }
     p.attr("data-file", file.name);
-    p.find('[rel="path"]')[0].innerHTML = path;
+    var elem = p.find('[rel="path"]')[0];
+    if (path === '') {
+      elem.innerHTML = '&nbsp;';
+    } else {
+      elem.textContent = path;
+    }
     p.find('[rel="size"]')[0].innerHTML = sizeFormatted(f.size);
     p.find('[rel="mtime"]')[0].innerHTML = dateFormatted(f.mtime);
     if (f.size > 0) p.find('[rel="link"]').attr("href", '#' + f.name);
