@@ -9,7 +9,7 @@ PRG_DEST      ?= $(PRG)
 # Build config
 
 GO            ?= go
-GOLANG_VERSION = v1.19.7-alpine3.17.2
+GOLANG_VERSION = v1.23.6-alpine3.21.3
 
 SOURCES        = $(shell find . -maxdepth 3 -mindepth 1 -path ./var -prune -o -name '*.go')
 APP_VERSION   ?= $(shell git describe --tags --always)
