@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/dc0d/dirwatch"
+	"github.com/fsnotify/fsnotify"
 	"github.com/go-logr/logr"
 )
 
@@ -89,21 +89,44 @@ func (ts *TailService) IndexUpdate(msg *IndexItemEvent) {
 func (iw indexWorker) run(readyChan chan struct{}, wg *sync.WaitGroup) {
 	wg.Add(1)
 	defer func() {
-		wg.Done()
 		iw.log.V(1).Info("Indexer stopped")
+		wg.Done()
+		readyChan <- struct{}{}
 	}()
-	notify := func(ev dirwatch.Event) {
-		iw.log.Info("Handling file event", "event", ev)
-		if err := sendUpdate(iw.out, iw.root, ev.Name); err != nil {
-			iw.log.Error(err, "Cannot get stat for file", "filepath", ev.Name)
+	//	logger := func(args ...interface{}) {} // Is it called ever?
+	watcher, err := fsnotify.NewWatcher() //dirwatch.Notify(notify), dirwatch.Logger(logger))
+	if err != nil {
+		iw.log.Error(err, "Cannot start watcher")
+		return
+	}
+
+	defer watcher.Close()
+	watcher.Add(iw.root)
+	readyChan <- struct{}{}
+	for {
+		select {
+		case event, ok := <-watcher.Events:
+			if !ok {
+				return
+			}
+			// log.Println("event:", event)
+			if event.Has(fsnotify.Write) || event.Has(fsnotify.Create) || event.Has(fsnotify.Remove) {
+				iw.log.Info("Handling file event", "event", event)
+				if err := sendUpdate(iw.out, iw.root, event.Name); err != nil {
+					iw.log.Error(err, "Cannot get stat for file", "filepath", event.Name)
+				}
+			}
+		case err, ok := <-watcher.Errors:
+			if !ok {
+				return
+			}
+			iw.log.Error(err, "Event error")
+			//                log.Println("error:", err)
+		case <-iw.quit:
+			iw.log.Info("Exiting")
+			return
 		}
 	}
-	logger := func(args ...interface{}) {} // Is it called ever?
-	watcher := dirwatch.New(dirwatch.Notify(notify), dirwatch.Logger(logger))
-	defer watcher.Stop()
-	watcher.Add(iw.root, true)
-	readyChan <- struct{}{}
-	<-iw.quit
 }
 
 // sendUpdate sends index update to out channel
