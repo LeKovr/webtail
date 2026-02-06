@@ -7,7 +7,7 @@ require (
 	github.com/LeKovr/go-kit/logger v0.2.3
 	github.com/LeKovr/go-kit/ver v0.10.0
 	github.com/a8m/djson v0.0.0-20170509170705-c02c5aef757f
-	github.com/fsnotify/fsnotify v1.6.0
+	github.com/fsnotify/fsnotify v1.9.0
 	github.com/fukata/golang-stats-api-handler v1.0.0
 	github.com/go-logr/logr v1.4.3
 	github.com/gorilla/websocket v1.5.3
