@@ -3,7 +3,7 @@ module github.com/LeKovr/webtail
 go 1.23.6
 
 require (
-	github.com/LeKovr/go-kit/config v0.5.5
+	github.com/LeKovr/go-kit/config v0.6.0
 	github.com/LeKovr/go-kit/logger v0.2.3
 	github.com/LeKovr/go-kit/ver v0.10.0
 	github.com/a8m/djson v0.0.0-20170509170705-c02c5aef757f
