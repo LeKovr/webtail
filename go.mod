@@ -9,7 +9,7 @@ require (
 	github.com/a8m/djson v0.0.0-20170509170705-c02c5aef757f
 	github.com/fsnotify/fsnotify v1.10.1
 	github.com/fukata/golang-stats-api-handler v1.0.0
-	github.com/go-logr/logr v1.4.3
+	github.com/go-logr/logr v1.4.4
 	github.com/gorilla/websocket v1.5.3
 	github.com/jessevdk/go-flags v1.6.1
 	github.com/nxadm/tail v1.4.11
